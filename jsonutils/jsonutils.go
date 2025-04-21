@@ -1,4 +1,4 @@
-package main
+package jsonutils
 
 import (
 	"encoding/json"
@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-func writeError(w http.ResponseWriter, respCode int, err error, msg string) {
+func WriteError(w http.ResponseWriter, respCode int, err error, msg string) {
 	if err != nil {
 		log.Println(err)
 	}
@@ -14,10 +14,10 @@ func writeError(w http.ResponseWriter, respCode int, err error, msg string) {
 		Error string `json:"error"`
 	}
 	e := errorResponse{Error: msg}
-	writeJSON(w, respCode, e)
+	WriteJSON(w, respCode, e)
 }
 
-func writeJSON(w http.ResponseWriter, respCode int, payload interface{}) {
+func WriteJSON(w http.ResponseWriter, respCode int, payload interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	dat, err := json.Marshal(payload)
 	if err != nil {

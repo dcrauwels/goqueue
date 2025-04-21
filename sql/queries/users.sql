@@ -18,6 +18,10 @@ SELECT * FROM users;
 SELECT * FROM users
 WHERE email = $1;
 
+-- name: GetUserByID :one
+SELECT * FROM users
+where id = $1;
+
 -- name: SetEmailPasswordByID :one
 UPDATE users
 SET email = $2, hashed_password = $3, updated_at = NOW()

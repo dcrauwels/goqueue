@@ -7,14 +7,10 @@ import (
 	"os"
 	"time"
 
+	"github.com/dcrauwels/goqueue/api"
 	"github.com/dcrauwels/goqueue/internal/database"
 	"github.com/joho/godotenv"
 )
-
-type apiConfig struct {
-	db     *database.Queries
-	secret string
-}
 
 func main() {
 	// load .env into env variables
@@ -28,22 +24,22 @@ func main() {
 	}
 	dbQueries := database.New(db)
 
-	// set up apiConfig
-	apiCfg := apiConfig{
-		db:     dbQueries,
-		secret: os.Getenv("SECRET"),
+	// set up ApiConfig
+	apiCfg := api.ApiConfig{
+		DB:     dbQueries,
+		Secret: os.Getenv("SECRET"),
 	}
 
 	// servemux
 	mux := http.NewServeMux()
 
-	// register handlers
+	// register handlers from api package
 	//handler_status.go
-	mux.HandleFunc("GET /api/healthz", readinessHandler)
+	mux.HandleFunc("GET /api/healthz", apiCfg.ReadinessHandler)
 	//handler_users.go
-	mux.HandleFunc("POST /api/users", apiCfg.handlerPostUsers)
-	mux.HandleFunc("PUT /api/users", apiCfg.handlerPutUsers)
-	mux.HandleFunc("DELETE /api/users", apiCfg.handlerDeleteUsers)
+	mux.HandleFunc("POST /api/users", apiCfg.HandlerPostUsers)
+	mux.HandleFunc("PUT /api/users", apiCfg.HandlerPutUsers)
+	mux.HandleFunc("DELETE /api/users", apiCfg.HandlerDeleteUsers)
 	//handler_auth.go
 	// login
 	// refresh
