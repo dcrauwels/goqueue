@@ -16,31 +16,43 @@ type authDependencies interface {
 	GetSecret() string
 }
 
-func AdminFromHeader(w http.ResponseWriter, r *http.Request, deps authDependencies) {
-
-	// check for admin status in accessing user
-	//get access token
+func UserFromHeader(w http.ResponseWriter, r *http.Request, deps authDependencies) (database.User, error) {
+	// return user from header authentication
+	accessingUser := database.User{}
 	accessToken, err := GetBearerToken(r.Header)
 	if err != nil {
 		jsonutils.WriteError(w, 401, err, "no authorization field in header")
-		return
+		return accessingUser, err
 	}
 	//validate token
 	accessingUserID, err := ValidateJWT(accessToken, deps.GetSecret())
 	if err != nil {
 		jsonutils.WriteError(w, 401, err, "access token invalid")
-		return
+		return accessingUser, err
 	}
 	//query for user by ID and run checks
-	accessingUser, err := deps.GetUserByID(r.Context(), accessingUserID)
+	accessingUser, err = deps.GetUserByID(r.Context(), accessingUserID)
 	if err == sql.ErrNoRows {
 		jsonutils.WriteError(w, 404, err, "user not found")
-		return
+		return accessingUser, err
 	} else if err != nil {
 		jsonutils.WriteError(w, 500, err, "error querying database")
-		return
-	} else if !accessingUser.IsAdmin {
-		jsonutils.WriteError(w, 401, errors.New("user not authorized"), "missing IsAdmin status")
-		return
+		return accessingUser, err
 	}
+
+	return accessingUser, nil
+}
+
+func IsAdminFromHeader(w http.ResponseWriter, r *http.Request, deps authDependencies) (bool, error) {
+	// return IsAdmin bool from header authentication
+	accessingUser, err := UserFromHeader(w, r, deps)
+	if err != nil {
+		return false, err
+	} else if !accessingUser.IsAdmin {
+		err = errors.New("user not authorized")
+		jsonutils.WriteError(w, 401, err, "missing IsAdmin status")
+		return false, err
+	}
+
+	return true, nil
 }

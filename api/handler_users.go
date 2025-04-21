@@ -1,9 +1,7 @@
 package api
 
 import (
-	"database/sql"
 	"encoding/json"
-	"errors"
 	"net/http"
 	"time"
 
@@ -14,61 +12,63 @@ import (
 	"github.com/google/uuid"
 )
 
-func (cfg *ApiConfig) HandlerPostUsers(w http.ResponseWriter, r *http.Request) { // POST /admin/users
-	// check for admin status in accessing user
-	//get access token
-	accessToken, err := auth.GetBearerToken(r.Header)
-	if err != nil {
-		jsonutils.WriteError(w, 401, err, "no authorization field in header")
-		return
-	}
-	//validate token
-	accessingUserID, err := auth.ValidateJWT(accessToken, cfg.Secret)
-	if err != nil {
-		jsonutils.WriteError(w, 401, err, "access token invalid")
-		return
-	}
-	//query for user by ID and run checks
-	accessingUser, err := cfg.DB.GetUserByID(r.Context(), accessingUserID)
-	if err == sql.ErrNoRows {
-		jsonutils.WriteError(w, 404, err, "user not found")
-		return
-	} else if err != nil {
-		jsonutils.WriteError(w, 500, err, "error querying database")
-		return
-	} else if !accessingUser.IsAdmin {
-		jsonutils.WriteError(w, 401, errors.New("user not authorized"), "missing IsAdmin status")
-		return
-	}
+type usersRequestParameters struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
 
-	// get request data
-	decoder := json.NewDecoder(r.Body)
-	reqParams := struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
-	}{}
-	err = decoder.Decode(&reqParams)
-	if err != nil {
-		jsonutils.WriteError(w, 400, err, "JSON formatting invalid")
-		return
-	}
+type usersResponseParameters struct {
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Email     string    `json:"email"`
+	IsAdmin   bool      `json:"is_admin"`
+	IsActive  bool      `json:"is_active"`
+}
 
+func processUsersParameters(w http.ResponseWriter, reqParams usersRequestParameters) (string, error) {
 	// check request for validity
 	//email valid
-	if err = strutils.ValidateEmail(reqParams.Email); err != nil {
-		jsonutils.WriteError(w, 400, err, "email formatting invalid: please use jdoe@provider.tld.")
-		return
+	if err := strutils.ValidateEmail(reqParams.Email); err != nil {
+		jsonutils.WriteError(w, 400, err, "password formatting invalid: please use jdoe@provider.tld")
+		return "", err
 	}
 	//password valid (aA0)
-	if err = strutils.ValidatePassword(reqParams.Password); err != nil {
+	if err := strutils.ValidatePassword(reqParams.Password); err != nil {
 		jsonutils.WriteError(w, 400, err, "password formatting invalid: please use lowercase, uppercase and/or numeric, between 8 and 30 characters.")
-		return
+		return "", err
 	}
 
 	// hash password
 	hashedPassword, err := auth.HashPassword(reqParams.Password)
 	if err != nil {
 		jsonutils.WriteError(w, 500, err, "password could not be hashed.")
+		return "", err
+	}
+
+	return hashedPassword, nil
+}
+
+func (cfg *ApiConfig) HandlerPostUsers(w http.ResponseWriter, r *http.Request) { // POST /api/users
+	// check for admin status in accessing user
+	userIsAdmin, err := auth.IsAdminFromHeader(w, r, cfg)
+	if err != nil || !userIsAdmin {
+		// already used jsonutils.WriteError in the auth.IsAdminFromHeader function. No need to repeat here
+		return
+	}
+
+	// get request data
+	decoder := json.NewDecoder(r.Body)
+	reqParams := usersRequestParameters{}
+	err = decoder.Decode(&reqParams)
+	if err != nil {
+		jsonutils.WriteError(w, 400, err, "JSON formatting invalid")
+		return
+	}
+
+	// check request for validity & hash password
+	hashedPassword, err := processUsersParameters(w, reqParams)
+	if err != nil {
 		return
 	}
 
@@ -83,14 +83,7 @@ func (cfg *ApiConfig) HandlerPostUsers(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// return response 201
-	responseParams := struct {
-		ID        uuid.UUID `json:"id"`
-		CreatedAt time.Time `json:"created_at"`
-		UpdatedAt time.Time `json:"updated_at"`
-		Email     string    `json:"email"`
-		IsAdmin   bool      `json:"is_admin"`
-		IsActive  bool      `json:"is_active"`
-	}{
+	responseParams := usersResponseParameters{
 		ID:        createdUser.ID,
 		CreatedAt: createdUser.CreatedAt,
 		UpdatedAt: createdUser.UpdatedAt,
@@ -103,12 +96,44 @@ func (cfg *ApiConfig) HandlerPostUsers(w http.ResponseWriter, r *http.Request) {
 }
 
 func (cfg *ApiConfig) HandlerPutUsers(w http.ResponseWriter, r *http.Request) { // PUT /api/users
-	// check for current user ID
+	// 1. check for admin status in accessing user
+	accessingUser, err := auth.UserFromHeader(w, r, cfg)
+	if err != nil {
+		// already used jsonutils.WriteError in the auth.UserFromHeader function. No need to repeat here
+		return
+	}
+
+	// 2. get request data
+	decoder := json.NewDecoder(r.Body)
+	reqParams := usersRequestParameters{}
+	err = decoder.Decode(&reqParams)
+	if err != nil {
+		jsonutils.WriteError(w, 400, err, "JSON formatting invalid")
+		return
+	}
+
+	// 3. check for validity and prep hashed password
+	hashedPassword, err := processUsersParameters(w, reqParams)
+	if err != nil {
+		return
+	}
+
+	// 4. run query
+
+	//
+
+	// 5. write response
 
 }
 
 func (cfg *ApiConfig) HandlerDeleteUsers(w http.ResponseWriter, r *http.Request) { // DELETE /api/users
-	// check for admin status in current user
+	// check for admin status in accessing user
+	userIsAdmin, err := auth.IsAdminFromHeader(w, r, cfg)
+	if err != nil || !userIsAdmin {
+		// already used jsonutils.WriteError in the auth.IsAdminFromHeader function. No need to repeat here
+		return
+	}
+
 	// run query DeleteUserByID
 	return
 }
