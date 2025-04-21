@@ -39,12 +39,15 @@ func main() {
 	//handler_users.go
 	mux.HandleFunc("POST /api/users", apiCfg.HandlerPostUsers)
 	mux.HandleFunc("PUT /api/users", apiCfg.HandlerPutUsers)
-	mux.HandleFunc("DELETE /api/users", apiCfg.HandlerDeleteUsers)
+	//mux.HandleFunc("DELETE /api/users", apiCfg.HandlerDeleteUsers)
 	//handler_auth.go
-	// login
-	// refresh
-	// revoke
+	mux.HandleFunc("POST /api/login", apiCfg.HandlerLogin)
+	mux.HandleFunc("POST /api/refresh", apiCfg.HandlerRefresh)
+	mux.HandleFunc("POST /api/logout", apiCfg.HandlerLogout)
 	//handler_visitors.go
+	// create visitor
+	// assign visitor to desk
+	// set visitor complete
 
 	// fileserver whenever
 
