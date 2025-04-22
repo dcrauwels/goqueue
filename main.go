@@ -10,6 +10,7 @@ import (
 	"github.com/dcrauwels/goqueue/api"
 	"github.com/dcrauwels/goqueue/internal/database"
 	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 )
 
 func main() {
@@ -41,9 +42,9 @@ func main() {
 	mux.HandleFunc("PUT /api/users", apiCfg.HandlerPutUsers)
 	//mux.HandleFunc("DELETE /api/users", apiCfg.HandlerDeleteUsers)
 	//handler_auth.go
-	mux.HandleFunc("POST /api/login", apiCfg.HandlerLogin)
+	mux.HandleFunc("POST /api/login", apiCfg.HandlerLoginUser)
 	mux.HandleFunc("POST /api/refresh", apiCfg.HandlerRefresh)
-	mux.HandleFunc("POST /api/logout", apiCfg.HandlerLogout)
+	mux.HandleFunc("POST /api/logout", apiCfg.HandlerLogoutUser)
 	//handler_visitors.go
 	// create visitor
 	// assign visitor to desk
