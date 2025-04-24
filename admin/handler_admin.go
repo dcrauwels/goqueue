@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 
@@ -9,7 +10,12 @@ import (
 	"github.com/dcrauwels/goqueue/jsonutils"
 )
 
-func (cfg *api.ApiConfig) AdminCreateUser(w http.ResponseWriter, r *http.Request) {
+type adminCfgDependencies interface {
+	CreateUser(context.Context, database.CreateUserParams) (database.User, error)
+	SetIsAdminByID(context.Context, database.SetIsAdminByIDParams) (database.User, error)
+}
+
+func AdminCreateUser(w http.ResponseWriter, r *http.Request, cfg adminCfgDependencies) {
 	// used for making an admin auth user
 	// 1. check admin status
 	// 1a. check dev env
@@ -32,7 +38,7 @@ func (cfg *api.ApiConfig) AdminCreateUser(w http.ResponseWriter, r *http.Request
 		Email:          reqParams.Email,
 		HashedPassword: hashedPassword,
 	}
-	createdUser, err := cfg.DB.CreateUser(r.Context(), queryCreateParams)
+	createdUser, err := cfg.CreateUser(r.Context(), queryCreateParams)
 	if err != nil {
 		jsonutils.WriteError(w, 500, err, "error querying database for user creation")
 		return
@@ -43,7 +49,7 @@ func (cfg *api.ApiConfig) AdminCreateUser(w http.ResponseWriter, r *http.Request
 		ID:      createdUser.ID,
 		IsAdmin: true,
 	}
-	adminUser, err := cfg.DB.SetIsAdminByID(r.Context(), queryAdminParams)
+	adminUser, err := cfg.SetIsAdminByID(r.Context(), queryAdminParams)
 	if err != nil {
 		jsonutils.WriteError(w, 500, err, "error querying database for setting IsAdmin")
 		return
@@ -61,7 +67,7 @@ func (cfg *api.ApiConfig) AdminCreateUser(w http.ResponseWriter, r *http.Request
 	jsonutils.WriteJSON(w, 200, respParams)
 }
 
-func (cfg *api.ApiConfig) AdminDeleteUser(w http.ResponseWriter, r *http.Request) {
+func AdminDeleteUser(w http.ResponseWriter, r *http.Request, cfg adminCfgDependencies) {
 	// used for fully deleting a user from the database. admin env only.
 	// 1. check admin status
 

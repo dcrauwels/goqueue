@@ -148,7 +148,7 @@ func (cfg *ApiConfig) HandlerPutUsers(w http.ResponseWriter, r *http.Request) { 
 }
 
 // not entirely sure how I want to go about this function yet
-```func (cfg *ApiConfig) HandlerDeleteUsers(w http.ResponseWriter, r *http.Request) { // DELETE /api/users
+/*func (cfg *ApiConfig) HandlerDeleteUsers(w http.ResponseWriter, r *http.Request) { // DELETE /api/users
 	// 1. get accessing user
 	accessingUser, err := auth.UserFromHeader(w, r, cfg)
 	if err != nil {
@@ -172,5 +172,4 @@ func (cfg *ApiConfig) HandlerPutUsers(w http.ResponseWriter, r *http.Request) { 
 
 	// 3. write response
 
-}```
-
+}*/
