@@ -47,9 +47,9 @@ func main() {
 	mux.HandleFunc("POST /api/refresh", apiCfg.HandlerRefreshUser)
 	mux.HandleFunc("POST /api/logout", apiCfg.HandlerLogoutUser)
 	//handler_visitors.go
-	// create visitor
-	// assign visitor to desk
-	// set visitor complete
+	mux.HandleFunc("POST /api/visitors", apiCfg.HandlerPostVisitors)
+	mux.HandleFunc("PUT /api/visitors/{visitor_id}", apiCfg.HandlerPutVisitors)
+	//handler_visitordesks.go
 	/// register handlers from the admin package
 	//handler_admin.go
 	mux.HandleFunc("POST /admin/users", func(w http.ResponseWriter, r *http.Request) {
