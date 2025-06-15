@@ -11,6 +11,13 @@ import (
 	"github.com/google/uuid"
 )
 
+type Desk struct {
+	ID          uuid.UUID
+	Number      int32
+	Description sql.NullString
+	IsActive    bool
+}
+
 type RefreshToken struct {
 	Token     string
 	CreatedAt time.Time
@@ -18,6 +25,17 @@ type RefreshToken struct {
 	UserID    uuid.UUID
 	ExpiresAt time.Time
 	RevokedAt sql.NullTime
+}
+
+type ServiceLog struct {
+	ID        uuid.UUID
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	VisitorID uuid.UUID
+	UserID    uuid.UUID
+	DeskID    uuid.UUID
+	CalledAt  time.Time
+	IsActive  bool
 }
 
 type User struct {
@@ -28,6 +46,8 @@ type User struct {
 	HashedPassword string
 	IsAdmin        bool
 	IsActive       bool
+	DeskID         uuid.NullUUID
+	FullName       string
 }
 
 type Visitor struct {

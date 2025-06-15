@@ -35,7 +35,7 @@ func TestPassword(t *testing.T) {
 
 }
 
-func TestJWT(t *testing.T) {
+func TestUserJWT(t *testing.T) {
 	// arguments
 	userID := uuid.New()
 	tokenSecret := "qqpp1001"

@@ -10,13 +10,13 @@ import (
 	"github.com/google/uuid"
 )
 
-func MakeJWT(userID uuid.UUID, tokenSecret string) (string, error) {
+func MakeJWT(ID uuid.UUID, tokenSecret string) (string, error) {
 	const expiresIn = time.Hour
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.RegisteredClaims{
-		Issuer:    "chirpy",
+		Issuer:    "goqueue",
 		IssuedAt:  jwt.NewNumericDate(time.Now()),
 		ExpiresAt: jwt.NewNumericDate(time.Now().Add(expiresIn)),
-		Subject:   userID.String(),
+		Subject:   ID.String(),
 	})
 	return token.SignedString([]byte(tokenSecret))
 }
@@ -53,17 +53,17 @@ func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
 		return uuid.Nil, fmt.Errorf("token issued in the future")
 	}
 	// check if token is issued by the correct issuer
-	if claims.Issuer != "chirpy" {
+	if claims.Issuer != "goqueue" {
 		return uuid.Nil, fmt.Errorf("token issued by incorrect issuer")
 	}
 
-	// get userID from token
-	userID, err := uuid.Parse(claims.Subject)
+	// get ID from token
+	ID, err := uuid.Parse(claims.Subject)
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("invalid userID in token: %v", err)
+		return uuid.Nil, fmt.Errorf("invalid ID in token: %v", err)
 	}
-	// return userID
-	return userID, nil
+	// return ID
+	return ID, nil
 }
 
 func GetBearerToken(headers http.Header) (string, error) {

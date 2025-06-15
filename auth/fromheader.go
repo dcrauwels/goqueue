@@ -17,6 +17,8 @@ type authDependencies interface {
 }
 
 func UserFromHeader(w http.ResponseWriter, r *http.Request, deps authDependencies) (database.User, error) {
+	// use this function when you are performing an action that assumes a logged in user
+	// returns the user in question
 	// return user from header authentication
 	accessingUser := database.User{}
 	accessToken, err := GetBearerToken(r.Header)

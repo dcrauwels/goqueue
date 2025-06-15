@@ -21,7 +21,7 @@ VALUES (
     NOW(),
     $1,
     $2,
-    1
+    0
 )
 RETURNING id, created_at, updated_at, waiting_since, name, purpose, status
 `
