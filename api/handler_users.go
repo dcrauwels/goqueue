@@ -83,6 +83,7 @@ func (cfg *ApiConfig) HandlerPostUsers(w http.ResponseWriter, r *http.Request) {
 	createdUser, err := cfg.DB.CreateUser(r.Context(), queryParams)
 	if err != nil {
 		jsonutils.WriteError(w, 500, err, "could not query database to create user.")
+		return
 	}
 
 	// return response 201

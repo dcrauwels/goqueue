@@ -1,6 +1,7 @@
 package strutils
 
 import (
+	"database/sql"
 	"errors"
 	"net/mail"
 	"unicode"
@@ -21,4 +22,13 @@ func ValidatePassword(password string) error {
 		}
 	}
 	return nil
+}
+
+func InitNullString(s string) sql.NullString {
+	// shortform for initializing a nullstring. relevant when querying a DB with a nullable string as parameter
+	r := sql.NullString{
+		String: s,
+		Valid:  true,
+	}
+	return r
 }
