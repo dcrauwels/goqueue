@@ -13,14 +13,14 @@ import (
 )
 
 type responseParameters struct {
-	ID           uuid.UUID `json:"id"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
-	Email        string    `json:"email"`
-	IsAdmin      bool      `json:"is_admin"`
-	IsActive     bool      `json:"is_active"`
-	AccessToken  string    `json:"access_token"`
-	RefreshToken string    `json:"refresh_token"`
+	ID               uuid.UUID `json:"id"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
+	Email            string    `json:"email"`
+	IsAdmin          bool      `json:"is_admin"`
+	IsActive         bool      `json:"is_active"`
+	UserAccessToken  string    `json:"user_access_token"`
+	UserRefreshToken string    `json:"user_refresh_token"`
 }
 
 func (cfg *ApiConfig) HandlerLoginUser(w http.ResponseWriter, r *http.Request) {
@@ -53,13 +53,13 @@ func (cfg *ApiConfig) HandlerLoginUser(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		jsonutils.WriteError(w, 403, err, "user already logged in, use /api/refresh endpoint instead")
 		return
-	} else if err != nil && err != sql.ErrNoRows {
+	} else if err != nil && err != sql.ErrNoRows { // tautological for clarity
 		jsonutils.WriteError(w, 500, err, "error querying database")
 		return
 	}
 
 	// 3. generate access token
-	accessToken, err := auth.MakeJWT(user.ID, cfg.Secret)
+	userAccessToken, err := auth.MakeJWT(user.ID, cfg.Secret, 60)
 	if err != nil {
 		jsonutils.WriteError(w, 500, err, "error creating access token")
 		return
@@ -85,14 +85,14 @@ func (cfg *ApiConfig) HandlerLoginUser(w http.ResponseWriter, r *http.Request) {
 	// 5. return access token to user
 
 	respParams := responseParameters{
-		ID:           user.ID,
-		CreatedAt:    user.CreatedAt,
-		UpdatedAt:    user.UpdatedAt,
-		Email:        user.Email,
-		IsAdmin:      user.IsAdmin,
-		IsActive:     user.IsActive,
-		AccessToken:  accessToken,
-		RefreshToken: newRefreshToken,
+		ID:               user.ID,
+		CreatedAt:        user.CreatedAt,
+		UpdatedAt:        user.UpdatedAt,
+		Email:            user.Email,
+		IsAdmin:          user.IsAdmin,
+		IsActive:         user.IsActive,
+		UserAccessToken:  userAccessToken,
+		UserRefreshToken: newRefreshToken,
 	}
 
 	jsonutils.WriteJSON(w, 200, respParams)
@@ -129,7 +129,7 @@ func (cfg *ApiConfig) HandlerRefreshUser(w http.ResponseWriter, r *http.Request)
 	}
 
 	// 3. generate access token
-	accessToken, err := auth.MakeJWT(reqParams.UserID, cfg.Secret)
+	userAccessToken, err := auth.MakeJWT(reqParams.UserID, cfg.Secret, 60)
 	if err != nil {
 		jsonutils.WriteError(w, 500, err, "error creating access token")
 		return
@@ -145,14 +145,14 @@ func (cfg *ApiConfig) HandlerRefreshUser(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	respParams := responseParameters{
-		ID:           fullUser.ID,
-		CreatedAt:    fullUser.CreatedAt,
-		UpdatedAt:    fullUser.UpdatedAt,
-		Email:        fullUser.Email,
-		IsAdmin:      fullUser.IsAdmin,
-		IsActive:     fullUser.IsActive,
-		AccessToken:  accessToken,
-		RefreshToken: fullRefreshToken.Token,
+		ID:               fullUser.ID,
+		CreatedAt:        fullUser.CreatedAt,
+		UpdatedAt:        fullUser.UpdatedAt,
+		Email:            fullUser.Email,
+		IsAdmin:          fullUser.IsAdmin,
+		IsActive:         fullUser.IsActive,
+		UserAccessToken:  userAccessToken,
+		UserRefreshToken: fullRefreshToken.Token,
 	}
 	jsonutils.WriteJSON(w, 200, respParams)
 }
@@ -176,14 +176,14 @@ func (cfg *ApiConfig) HandlerLogoutUser(w http.ResponseWriter, r *http.Request) 
 
 	// 3. send response with empty access token
 	respParams := responseParameters{
-		ID:           user.ID,
-		CreatedAt:    user.CreatedAt,
-		UpdatedAt:    user.UpdatedAt,
-		Email:        user.Email,
-		IsAdmin:      user.IsAdmin,
-		IsActive:     user.IsActive,
-		AccessToken:  "",
-		RefreshToken: "",
+		ID:               user.ID,
+		CreatedAt:        user.CreatedAt,
+		UpdatedAt:        user.UpdatedAt,
+		Email:            user.Email,
+		IsAdmin:          user.IsAdmin,
+		IsActive:         user.IsActive,
+		UserAccessToken:  "",
+		UserRefreshToken: "",
 	}
 	jsonutils.WriteJSON(w, 200, respParams)
 

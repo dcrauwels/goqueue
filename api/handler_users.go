@@ -150,6 +150,10 @@ func (cfg *ApiConfig) HandlerPutUsers(w http.ResponseWriter, r *http.Request) { 
 
 }
 
+func (cfg *ApiConfig) HandlerGetUsers(w http.ResponseWriter, r *http.Request) {
+
+}
+
 // not entirely sure how I want to go about this function yet
 /*func (cfg *ApiConfig) HandlerDeleteUsers(w http.ResponseWriter, r *http.Request) { // DELETE /api/users
 	// 1. get accessing user

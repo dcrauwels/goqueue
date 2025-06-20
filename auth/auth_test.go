@@ -41,7 +41,7 @@ func TestUserJWT(t *testing.T) {
 	tokenSecret := "qqpp1001"
 
 	// make jwt
-	jwt, err := MakeJWT(userID, tokenSecret)
+	jwt, err := MakeJWT(userID, tokenSecret, 60)
 	if err != nil {
 		t.Errorf(`MakeJWT(userID, "qqpp1001", time.Second) = %s, %v; expected token, nil`, jwt, err)
 	}

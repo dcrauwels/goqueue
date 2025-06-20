@@ -10,8 +10,8 @@ import (
 	"github.com/google/uuid"
 )
 
-func MakeJWT(ID uuid.UUID, tokenSecret string) (string, error) {
-	const expiresIn = time.Hour
+func MakeJWT(ID uuid.UUID, tokenSecret string, expirationMinutes int) (string, error) {
+	expiresIn := time.Duration(expirationMinutes) * time.Minute
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.RegisteredClaims{
 		Issuer:    "goqueue",
 		IssuedAt:  jwt.NewNumericDate(time.Now()),

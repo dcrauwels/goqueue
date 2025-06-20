@@ -41,6 +41,7 @@ func main() {
 	//handler_users.go
 	mux.HandleFunc("POST /api/users", apiCfg.HandlerPostUsers)
 	mux.HandleFunc("PUT /api/users", apiCfg.HandlerPutUsers)
+	mux.HandleFunc("GET /api/users/{user_id}", apiCfg.HandlerGetUsers) // NYI
 	//mux.HandleFunc("DELETE /api/users", apiCfg.HandlerDeleteUsers)
 	//handler_auth.go
 	mux.HandleFunc("POST /api/login", apiCfg.HandlerLoginUser)
@@ -48,8 +49,9 @@ func main() {
 	mux.HandleFunc("POST /api/logout", apiCfg.HandlerLogoutUser)
 	//handler_visitors.go
 	mux.HandleFunc("POST /api/visitors", apiCfg.HandlerPostVisitors)
-	mux.HandleFunc("PUT /api/visitors/{visitor_id}", apiCfg.HandlerPutVisitors)
-	//handler_visitordesks.go
+	mux.HandleFunc("PUT /api/visitors/{visitor_id}", apiCfg.HandlerPutVisitors) // NYI
+	mux.HandleFunc("GET /api/visitors", apiCfg.HandlerGetVisitors)              // NYI
+	//handler_servicelogs.go NYI
 	/// register handlers from the admin package
 	//handler_admin.go
 	mux.HandleFunc("POST /admin/users", func(w http.ResponseWriter, r *http.Request) {

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/dcrauwels/goqueue/auth"
 	"github.com/dcrauwels/goqueue/internal/database"
 	"github.com/dcrauwels/goqueue/jsonutils"
 	"github.com/dcrauwels/goqueue/strutils"
@@ -17,13 +18,14 @@ type VisitorsRequestParameters struct {
 }
 
 type VisitorsResponseParameters struct {
-	ID           uuid.UUID `json:"id"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
-	WaitingSince time.Time `json:"waiting_since"`
-	Name         string    `json:"name"`
-	Purpose      string    `json:"purpose"`
-	Status       int32     `json:"status"`
+	ID                 uuid.UUID `json:"id"`
+	CreatedAt          time.Time `json:"created_at"`
+	UpdatedAt          time.Time `json:"updated_at"`
+	WaitingSince       time.Time `json:"waiting_since"`
+	Name               string    `json:"name"`
+	Purpose            string    `json:"purpose"`
+	Status             int32     `json:"status"`
+	VisitorAccessToken string    `json:"visitor_access_token"`
 }
 
 func (cfg *ApiConfig) HandlerPostVisitors(w http.ResponseWriter, r *http.Request) {
@@ -39,11 +41,13 @@ func (cfg *ApiConfig) HandlerPostVisitors(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// 2. make visitor refresh token NYI THIS IS BIG
+	// 2. check purpose for validity NYI
+	// these should be user defined, meaning a new migration is needed to:
+	// a. CREATE TABLE purposes
+	// b. UPDATE TABLE visitors ADD CONSTRAINT fk_purpose FOREIGN KEY purpose REFERENCES purposes (id)
+	// not sure on b honestly. May need to down migrate
 
-	// 3. check purpose for validity NYI
-
-	// 4. query DB: CreateVisitor
+	// 3. query DB: CreateVisitor
 	queryParams := database.CreateVisitorParams{
 		Name:    strutils.InitNullString(reqParams.Name), // name is currently nullable.
 		Purpose: reqParams.Purpose,
@@ -54,15 +58,36 @@ func (cfg *ApiConfig) HandlerPostVisitors(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	// 4. make visitor access token
+	visitorAccessToken, err := auth.MakeJWT(createdVisitor.ID, cfg.Secret, 120)
+	if err != nil {
+		jsonutils.WriteError(w, 500, err, "could not create access token")
+		return
+	}
+
 	// 5. return response 201
 	responseParams := VisitorsResponseParameters{
-		ID:           createdVisitor.ID,
-		CreatedAt:    createdVisitor.CreatedAt,
-		UpdatedAt:    createdVisitor.UpdatedAt,
-		WaitingSince: createdVisitor.WaitingSince,
-		Name:         createdVisitor.Name.String,
-		Purpose:      createdVisitor.Purpose,
-		Status:       createdVisitor.Status,
+		ID:                 createdVisitor.ID,
+		CreatedAt:          createdVisitor.CreatedAt,
+		UpdatedAt:          createdVisitor.UpdatedAt,
+		WaitingSince:       createdVisitor.WaitingSince,
+		Name:               createdVisitor.Name.String,
+		Purpose:            createdVisitor.Purpose,
+		Status:             createdVisitor.Status,
+		VisitorAccessToken: visitorAccessToken,
 	}
 	jsonutils.WriteJSON(w, 201, responseParams)
+}
+
+func (cfg *ApiConfig) HandlerPutVisitors(w http.ResponseWriter, r *http.Request) {
+	// 1. get request data, particularly visitor ID
+	// 2. validate? probably not
+	// 3. run query
+
+}
+
+func (cfg *ApiConfig) HandlerGetVisitors(w http.ResponseWriter, r *http.Request) {
+	// 1. get request data, in particular whether we have a logged in user
+	// 2. validate request (purpose)
+	// 3. run query
 }
