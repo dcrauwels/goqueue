@@ -53,6 +53,7 @@ func ProcessUsersParameters(w http.ResponseWriter, reqParams UsersRequestParamet
 }
 
 func (cfg *ApiConfig) HandlerPostUsers(w http.ResponseWriter, r *http.Request) { // POST /api/users
+	// function to CREATE new user
 	// check for admin status in accessing user
 	userIsAdmin, err := auth.IsAdminFromHeader(w, r, cfg)
 	if err != nil || !userIsAdmin {
@@ -92,6 +93,7 @@ func (cfg *ApiConfig) HandlerPostUsers(w http.ResponseWriter, r *http.Request) {
 		CreatedAt: createdUser.CreatedAt,
 		UpdatedAt: createdUser.UpdatedAt,
 		Email:     createdUser.Email,
+		FullName:  createdUser.FullName,
 		IsAdmin:   createdUser.IsAdmin,
 		IsActive:  createdUser.IsActive,
 	}
@@ -100,6 +102,9 @@ func (cfg *ApiConfig) HandlerPostUsers(w http.ResponseWriter, r *http.Request) {
 }
 
 func (cfg *ApiConfig) HandlerPutUsers(w http.ResponseWriter, r *http.Request) { // PUT /api/users
+	// function to change own details for user. Only things a user can change about himself are email, password and fullname
+	// NYI: fullname editing
+
 	// 1. get accessing user from header
 	accessingUser, err := auth.UserFromHeader(w, r, cfg)
 	if err != nil {
@@ -141,16 +146,52 @@ func (cfg *ApiConfig) HandlerPutUsers(w http.ResponseWriter, r *http.Request) { 
 	respParams := UsersResponseParameters{
 		ID:        updatedUser.ID,
 		CreatedAt: updatedUser.CreatedAt,
-		UpdatedAt: accessingUser.UpdatedAt,
-		Email:     accessingUser.Email,
-		IsAdmin:   accessingUser.IsAdmin,
-		IsActive:  accessingUser.IsActive,
+		UpdatedAt: updatedUser.UpdatedAt,
+		Email:     updatedUser.Email,
+		FullName:  updatedUser.FullName,
+		IsAdmin:   updatedUser.IsAdmin,
+		IsActive:  updatedUser.IsActive,
 	}
 	jsonutils.WriteJSON(w, 200, respParams)
 
 }
 
-func (cfg *ApiConfig) HandlerGetUsers(w http.ResponseWriter, r *http.Request) {
+func (cfg *ApiConfig) HandlerGetUsers(w http.ResponseWriter, r *http.Request) { // GET /api/users
+	// returns list of all users
+	// requires isadmin status from accessing user
+
+	// 1. check if accessing user is admin
+	isAdmin, err := auth.IsAdminFromHeader(w, r, cfg)
+	if err != nil {
+		jsonutils.WriteError(w, 403, err, "GET /api/users is only accessible to admin level users")
+		return
+	}
+	// 2. run query
+	users, err := cfg.DB.GetUsers(r.Context())
+	if err == sql.ErrNoRows {
+		jsonutils.WriteError(w, 404, err, "no users found")
+		return
+	} else if err != nil {
+		jsonutils.WriteError(w, 500, err, "error querying database")
+		return
+	}
+	// 3. write response
+	response := make([]UsersResponseParameters, len(users))
+	for i, u := range users {
+		response[i] = UsersResponseParameters{
+			ID:        u.ID,
+			CreatedAt: u.CreatedAt,
+			UpdatedAt: u.UpdatedAt,
+			Email:     u.Email,
+			FullName:  u.FullName,
+			IsAdmin:   u.IsAdmin,
+			IsActive:  u.IsActive,
+		}
+	}
+	jsonutils.WriteJSON(w, 200, response)
+}
+
+func (cfg *ApiConfig) HandlerGetUsersByID(w http.ResponseWriter, r *http.Request) { // GET /api/users/{user_id}
 
 }
 

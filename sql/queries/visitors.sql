@@ -24,3 +24,8 @@ ORDER BY waiting_since ASC;
 SELECT * FROM visitors
 WHERE purpose = $1 AND status = 1
 ORDER BY waiting_since ASC;
+
+-- name: GetVisitorsForToday :many
+SELECT * FROM visitors
+WHERE waiting_since::date = CURRENT_DATE
+ORDER BY waiting_since ASC;

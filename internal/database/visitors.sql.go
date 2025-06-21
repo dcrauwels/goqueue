@@ -103,6 +103,43 @@ func (q *Queries) GetVisitorsByStatus(ctx context.Context, status int32) ([]Visi
 	return items, nil
 }
 
+const getVisitorsForToday = `-- name: GetVisitorsForToday :many
+SELECT id, created_at, updated_at, waiting_since, name, purpose, status FROM visitors
+WHERE waiting_since::date = CURRENT_DATE
+ORDER BY waiting_since ASC
+`
+
+func (q *Queries) GetVisitorsForToday(ctx context.Context) ([]Visitor, error) {
+	rows, err := q.db.QueryContext(ctx, getVisitorsForToday)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Visitor
+	for rows.Next() {
+		var i Visitor
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.WaitingSince,
+			&i.Name,
+			&i.Purpose,
+			&i.Status,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getWaitingVisitorsByPurpose = `-- name: GetWaitingVisitorsByPurpose :many
 SELECT id, created_at, updated_at, waiting_since, name, purpose, status FROM visitors
 WHERE purpose = $1 AND status = 1

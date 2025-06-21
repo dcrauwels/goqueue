@@ -41,7 +41,8 @@ func main() {
 	//handler_users.go
 	mux.HandleFunc("POST /api/users", apiCfg.HandlerPostUsers)
 	mux.HandleFunc("PUT /api/users", apiCfg.HandlerPutUsers)
-	mux.HandleFunc("GET /api/users/{user_id}", apiCfg.HandlerGetUsers) // NYI
+	mux.HandleFunc("GET /api/users", apiCfg.HandlerGetUsers)
+	mux.HandleFunc("GET /api/users/{user_id}", apiCfg.HandlerGetUsersByID) // NYI
 	//mux.HandleFunc("DELETE /api/users", apiCfg.HandlerDeleteUsers)
 	//handler_auth.go
 	mux.HandleFunc("POST /api/login", apiCfg.HandlerLoginUser)
