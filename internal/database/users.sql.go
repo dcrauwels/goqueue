@@ -153,21 +153,59 @@ func (q *Queries) GetUsers(ctx context.Context) ([]User, error) {
 	return items, nil
 }
 
-const setEmailPasswordByID = `-- name: SetEmailPasswordByID :one
+const setUserByID = `-- name: SetUserByID :one
+UPDATE users
+SET email = $2, full_name = $3, is_admin = $4, is_active = $5, updated_at = NOW()
+WHERE id = $1
+returning id, created_at, updated_at, email, hashed_password, is_admin, is_active, desk_id, full_name
+`
+
+type SetUserByIDParams struct {
+	ID       uuid.UUID
+	Email    string
+	FullName string
+	IsAdmin  bool
+	IsActive bool
+}
+
+func (q *Queries) SetUserByID(ctx context.Context, arg SetUserByIDParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, setUserByID,
+		arg.ID,
+		arg.Email,
+		arg.FullName,
+		arg.IsAdmin,
+		arg.IsActive,
+	)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Email,
+		&i.HashedPassword,
+		&i.IsAdmin,
+		&i.IsActive,
+		&i.DeskID,
+		&i.FullName,
+	)
+	return i, err
+}
+
+const setUserEmailPasswordByID = `-- name: SetUserEmailPasswordByID :one
 UPDATE users
 SET email = $2, hashed_password = $3, updated_at = NOW()
 WHERE id = $1
 RETURNING id, created_at, updated_at, email, hashed_password, is_admin, is_active, desk_id, full_name
 `
 
-type SetEmailPasswordByIDParams struct {
+type SetUserEmailPasswordByIDParams struct {
 	ID             uuid.UUID
 	Email          string
 	HashedPassword string
 }
 
-func (q *Queries) SetEmailPasswordByID(ctx context.Context, arg SetEmailPasswordByIDParams) (User, error) {
-	row := q.db.QueryRowContext(ctx, setEmailPasswordByID, arg.ID, arg.Email, arg.HashedPassword)
+func (q *Queries) SetUserEmailPasswordByID(ctx context.Context, arg SetUserEmailPasswordByIDParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, setUserEmailPasswordByID, arg.ID, arg.Email, arg.HashedPassword)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -183,20 +221,20 @@ func (q *Queries) SetEmailPasswordByID(ctx context.Context, arg SetEmailPassword
 	return i, err
 }
 
-const setFullNameByID = `-- name: SetFullNameByID :one
+const setUserFullNameByID = `-- name: SetUserFullNameByID :one
 UPDATE users
-SET full_name = $2
+SET full_name = $2, updated_at = NOW()
 where id = $1
 RETURNING id, created_at, updated_at, email, hashed_password, is_admin, is_active, desk_id, full_name
 `
 
-type SetFullNameByIDParams struct {
+type SetUserFullNameByIDParams struct {
 	ID       uuid.UUID
 	FullName string
 }
 
-func (q *Queries) SetFullNameByID(ctx context.Context, arg SetFullNameByIDParams) (User, error) {
-	row := q.db.QueryRowContext(ctx, setFullNameByID, arg.ID, arg.FullName)
+func (q *Queries) SetUserFullNameByID(ctx context.Context, arg SetUserFullNameByIDParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, setUserFullNameByID, arg.ID, arg.FullName)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -212,20 +250,20 @@ func (q *Queries) SetFullNameByID(ctx context.Context, arg SetFullNameByIDParams
 	return i, err
 }
 
-const setInactiveByID = `-- name: SetInactiveByID :one
+const setUserInactiveByID = `-- name: SetUserInactiveByID :one
 UPDATE users
 SET is_active = $2, updated_at = NOW()
 WHERE id = $1
 RETURNING id, created_at, updated_at, email, hashed_password, is_admin, is_active, desk_id, full_name
 `
 
-type SetInactiveByIDParams struct {
+type SetUserInactiveByIDParams struct {
 	ID       uuid.UUID
 	IsActive bool
 }
 
-func (q *Queries) SetInactiveByID(ctx context.Context, arg SetInactiveByIDParams) (User, error) {
-	row := q.db.QueryRowContext(ctx, setInactiveByID, arg.ID, arg.IsActive)
+func (q *Queries) SetUserInactiveByID(ctx context.Context, arg SetUserInactiveByIDParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, setUserInactiveByID, arg.ID, arg.IsActive)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -241,20 +279,20 @@ func (q *Queries) SetInactiveByID(ctx context.Context, arg SetInactiveByIDParams
 	return i, err
 }
 
-const setIsAdminByID = `-- name: SetIsAdminByID :one
+const setUserIsAdminByID = `-- name: SetUserIsAdminByID :one
 UPDATE users
 SET is_admin = $2, updated_at = NOW()
 WHERE id = $1
 RETURNING id, created_at, updated_at, email, hashed_password, is_admin, is_active, desk_id, full_name
 `
 
-type SetIsAdminByIDParams struct {
+type SetUserIsAdminByIDParams struct {
 	ID      uuid.UUID
 	IsAdmin bool
 }
 
-func (q *Queries) SetIsAdminByID(ctx context.Context, arg SetIsAdminByIDParams) (User, error) {
-	row := q.db.QueryRowContext(ctx, setIsAdminByID, arg.ID, arg.IsAdmin)
+func (q *Queries) SetUserIsAdminByID(ctx context.Context, arg SetUserIsAdminByIDParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, setUserIsAdminByID, arg.ID, arg.IsAdmin)
 	var i User
 	err := row.Scan(
 		&i.ID,

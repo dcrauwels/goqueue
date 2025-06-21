@@ -19,6 +19,13 @@ type UsersRequestParameters struct {
 	FullName string `json:"full_name"`
 }
 
+type UsersAdminRequestParameters struct {
+	Email    string `json:"email"`
+	FullName string `json:"full_name"`
+	IsAdmin  bool   `json:"is_admin"`
+	IsActive bool   `json:"is_active"`
+}
+
 type UsersResponseParameters struct {
 	ID        uuid.UUID `json:"id"`
 	CreatedAt time.Time `json:"created_at"`
@@ -132,12 +139,12 @@ func (cfg *ApiConfig) HandlerPutUsers(w http.ResponseWriter, r *http.Request) { 
 	}
 
 	// 4. run query
-	queryParams := database.SetEmailPasswordByIDParams{
+	queryParams := database.SetUserEmailPasswordByIDParams{
 		ID:             accessingUser.ID,
 		Email:          reqParams.Email,
 		HashedPassword: hashedPassword,
 	}
-	updatedUser, err := cfg.DB.SetEmailPasswordByID(r.Context(), queryParams)
+	updatedUser, err := cfg.DB.SetUserEmailPasswordByID(r.Context(), queryParams)
 	if err == sql.ErrNoRows {
 		jsonutils.WriteError(w, 403, err, "user does not exist. How did you do this?")
 		return
@@ -153,8 +160,61 @@ func (cfg *ApiConfig) HandlerPutUsers(w http.ResponseWriter, r *http.Request) { 
 
 }
 
+func (cfg *ApiConfig) HandlerPutUsersByID(w http.ResponseWriter, r *http.Request) { // PUT /api/users/{user_id}
+	// function to UPDATE specific user by ID
+	// requires isadmin status from accessing user
+
+	// 1. check if accessing user is admin
+	isAdmin, err := auth.IsAdminFromHeader(w, r, cfg)
+	if err != nil {
+		return
+	} else if !isAdmin {
+		jsonutils.WriteError(w, 403, err, "PUT /api/users/{user_id} is only accessible to admin level users")
+		return
+	}
+
+	// 2. retrieve target user from uri
+	req := r.PathValue("user_id")
+	userID, err := uuid.Parse(req)
+	if err != nil {
+		jsonutils.WriteError(w, 400, err, "endpoint is not a valid user ID")
+		return
+	}
+
+	// 3. retrieve request data
+	request := UsersAdminRequestParameters{} // note that we will be filling out nearly all other values so
+	decoder := json.NewDecoder(r.Body)
+	err = decoder.Decode(&request)
+	if err != nil {
+		jsonutils.WriteError(w, 400, err, "invalid json request structure")
+		return
+	}
+
+	// 4. run query
+	queryParams := database.SetUserByIDParams{
+		ID:       userID,
+		Email:    request.Email,
+		FullName: request.FullName,
+		IsAdmin:  request.IsAdmin,
+		IsActive: request.IsActive,
+	}
+	updatedUser, err := cfg.DB.SetUserByID(r.Context(), queryParams)
+	if err == sql.ErrNoRows {
+		jsonutils.WriteError(w, 404, err, "user not found")
+		return
+	} else if err != nil {
+		jsonutils.WriteError(w, 500, err, "error querying database")
+		return
+	}
+
+	// 5. write response
+	response := UsersResponseParameters{}
+	response.Populate(updatedUser)
+	jsonutils.WriteJSON(w, 200, response)
+}
+
 func (cfg *ApiConfig) HandlerGetUsers(w http.ResponseWriter, r *http.Request) { // GET /api/users
-	// returns list of all users
+	// READs all users
 	// requires isadmin status from accessing user
 
 	// 1. check if accessing user is admin

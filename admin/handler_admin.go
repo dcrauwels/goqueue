@@ -6,18 +6,26 @@ import (
 	"net/http"
 
 	"github.com/dcrauwels/goqueue/api"
+	"github.com/dcrauwels/goqueue/auth"
 	"github.com/dcrauwels/goqueue/internal/database"
 	"github.com/dcrauwels/goqueue/jsonutils"
+	"github.com/google/uuid"
 )
 
 type adminCfgDependencies interface {
 	CreateUser(context.Context, database.CreateUserParams) (database.User, error)
-	SetIsAdminByID(context.Context, database.SetIsAdminByIDParams) (database.User, error)
+	SetIsAdminByID(context.Context, database.SetUserIsAdminByIDParams) (database.User, error)
+	GetUserByID(context.Context, uuid.UUID) (database.User, error)
+	GetSecret() string
 }
 
 func AdminCreateUser(w http.ResponseWriter, r *http.Request, cfg adminCfgDependencies) {
 	// used for making an admin auth user
 	// 1. check admin status
+	isAdmin, err := auth.IsAdminFromHeader(w, r, cfg)
+	if err != nil {
+		jsonutils.WriteError(w, 400, err)
+	}
 	// 1a. check dev env
 
 	// 2. get req params: email & password

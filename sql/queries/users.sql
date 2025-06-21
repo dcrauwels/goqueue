@@ -23,25 +23,31 @@ WHERE email = $1;
 SELECT * FROM users
 where id = $1;
 
--- name: SetEmailPasswordByID :one
+-- name: SetUserByID :one
+UPDATE users
+SET email = $2, full_name = $3, is_admin = $4, is_active = $5, updated_at = NOW()
+WHERE id = $1
+returning *;
+
+-- name: SetUserEmailPasswordByID :one
 UPDATE users
 SET email = $2, hashed_password = $3, updated_at = NOW()
 WHERE id = $1
 RETURNING *;
 
--- name: SetFullNameByID :one
+-- name: SetUserFullNameByID :one
 UPDATE users
-SET full_name = $2
+SET full_name = $2, updated_at = NOW()
 where id = $1
 RETURNING *;
 
--- name: SetIsAdminByID :one
+-- name: SetUserIsAdminByID :one
 UPDATE users
 SET is_admin = $2, updated_at = NOW()
 WHERE id = $1
 RETURNING *;
 
--- name: SetInactiveByID :one
+-- name: SetUserInactiveByID :one
 UPDATE users
 SET is_active = $2, updated_at = NOW()
 WHERE id = $1

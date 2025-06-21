@@ -41,9 +41,10 @@ func main() {
 	//handler_users.go
 	mux.HandleFunc("POST /api/users", apiCfg.HandlerPostUsers)
 	mux.HandleFunc("PUT /api/users", apiCfg.HandlerPutUsers)
+	mux.HandleFunc("PUT /api/users/{user_id}", apiCfg.HandlerPutUsersByID) //NYI
 	mux.HandleFunc("GET /api/users", apiCfg.HandlerGetUsers)
-	mux.HandleFunc("GET /api/users/{user_id}", apiCfg.HandlerGetUsersByID) // NYI
-	//mux.HandleFunc("DELETE /api/users", apiCfg.HandlerDeleteUsers)
+	mux.HandleFunc("GET /api/users/{user_id}", apiCfg.HandlerGetUsersByID)
+	//mux.HandleFunc("DELETE /api/users", apiCfg.HandlerDeleteUsers) NYI do I even want this
 	//handler_auth.go
 	mux.HandleFunc("POST /api/login", apiCfg.HandlerLoginUser)
 	mux.HandleFunc("POST /api/refresh", apiCfg.HandlerRefreshUser)
@@ -56,8 +57,8 @@ func main() {
 	/// register handlers from the admin package
 	//handler_admin.go
 	mux.HandleFunc("POST /admin/users", func(w http.ResponseWriter, r *http.Request) {
-		admin.AdminCreateUser(w, r, apiCfg.DB)
-	}) // these need to be done through closre
+		admin.AdminCreateUser(w, r, apiCfg)
+	}
 
 	// fileserver whenever
 
