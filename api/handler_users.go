@@ -29,6 +29,16 @@ type UsersResponseParameters struct {
 	IsActive  bool      `json:"is_active"`
 }
 
+func (urp *UsersResponseParameters) Populate(u database.User) {
+	urp.ID = u.ID
+	urp.CreatedAt = u.CreatedAt
+	urp.UpdatedAt = u.UpdatedAt
+	urp.Email = u.Email
+	urp.FullName = u.FullName
+	urp.IsAdmin = u.IsAdmin
+	urp.IsActive = u.IsActive
+}
+
 func ProcessUsersParameters(w http.ResponseWriter, reqParams UsersRequestParameters) (string, error) {
 	// check request for validity
 	//email valid
@@ -88,16 +98,10 @@ func (cfg *ApiConfig) HandlerPostUsers(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// return response 201
-	responseParams := UsersResponseParameters{
-		ID:        createdUser.ID,
-		CreatedAt: createdUser.CreatedAt,
-		UpdatedAt: createdUser.UpdatedAt,
-		Email:     createdUser.Email,
-		FullName:  createdUser.FullName,
-		IsAdmin:   createdUser.IsAdmin,
-		IsActive:  createdUser.IsActive,
-	}
-	jsonutils.WriteJSON(w, 201, responseParams)
+	response := UsersResponseParameters{}
+	response.Populate(createdUser)
+
+	jsonutils.WriteJSON(w, 201, response)
 
 }
 
@@ -143,16 +147,9 @@ func (cfg *ApiConfig) HandlerPutUsers(w http.ResponseWriter, r *http.Request) { 
 	}
 
 	// 5. write response
-	respParams := UsersResponseParameters{
-		ID:        updatedUser.ID,
-		CreatedAt: updatedUser.CreatedAt,
-		UpdatedAt: updatedUser.UpdatedAt,
-		Email:     updatedUser.Email,
-		FullName:  updatedUser.FullName,
-		IsAdmin:   updatedUser.IsAdmin,
-		IsActive:  updatedUser.IsActive,
-	}
-	jsonutils.WriteJSON(w, 200, respParams)
+	response := UsersResponseParameters{}
+	response.Populate(updatedUser)
+	jsonutils.WriteJSON(w, 200, response)
 
 }
 
@@ -163,6 +160,9 @@ func (cfg *ApiConfig) HandlerGetUsers(w http.ResponseWriter, r *http.Request) { 
 	// 1. check if accessing user is admin
 	isAdmin, err := auth.IsAdminFromHeader(w, r, cfg)
 	if err != nil {
+		// auth.UserFromHeader() already calls jsonutils.WriteError()
+		return
+	} else if !isAdmin {
 		jsonutils.WriteError(w, 403, err, "GET /api/users is only accessible to admin level users")
 		return
 	}
@@ -178,21 +178,36 @@ func (cfg *ApiConfig) HandlerGetUsers(w http.ResponseWriter, r *http.Request) { 
 	// 3. write response
 	response := make([]UsersResponseParameters, len(users))
 	for i, u := range users {
-		response[i] = UsersResponseParameters{
-			ID:        u.ID,
-			CreatedAt: u.CreatedAt,
-			UpdatedAt: u.UpdatedAt,
-			Email:     u.Email,
-			FullName:  u.FullName,
-			IsAdmin:   u.IsAdmin,
-			IsActive:  u.IsActive,
-		}
+		response[i] = UsersResponseParameters{}
+		response[i].Populate(u)
 	}
 	jsonutils.WriteJSON(w, 200, response)
 }
 
 func (cfg *ApiConfig) HandlerGetUsersByID(w http.ResponseWriter, r *http.Request) { // GET /api/users/{user_id}
+	// 1. get user ID from request uri
+	req := r.PathValue("user_id")
 
+	// 2. check for validity
+	userID, err := uuid.Parse(req)
+	if err != nil {
+		jsonutils.WriteError(w, 400, err, "endpoint is not a valid user ID")
+		return
+	}
+
+	// 3. run query
+	user, err := cfg.GetUserByID(r.Context(), userID)
+	if err == sql.ErrNoRows {
+		jsonutils.WriteError(w, 404, err, "user not found")
+		return
+	} else if err != nil {
+		jsonutils.WriteError(w, 500, err, "error querying database")
+		return
+	}
+	// 4. write response
+	response := UsersResponseParameters{}
+	response.Populate(user)
+	jsonutils.WriteJSON(w, 200, response)
 }
 
 // not entirely sure how I want to go about this function yet

@@ -3,7 +3,6 @@ package auth
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"net/http"
 
 	"github.com/dcrauwels/goqueue/internal/database"
@@ -50,11 +49,6 @@ func IsAdminFromHeader(w http.ResponseWriter, r *http.Request, deps authDependen
 	accessingUser, err := UserFromHeader(w, r, deps)
 	if err != nil {
 		return false, err
-	} else if !accessingUser.IsAdmin {
-		err = errors.New("user not authorized")
-		jsonutils.WriteError(w, 401, err, "missing IsAdmin status")
-		return false, err
 	}
-
-	return true, nil
+	return accessingUser.IsAdmin, nil
 }

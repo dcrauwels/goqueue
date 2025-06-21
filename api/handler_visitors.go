@@ -29,7 +29,7 @@ type VisitorsResponseParameters struct {
 }
 
 func (cfg *ApiConfig) HandlerPostVisitors(w http.ResponseWriter, r *http.Request) {
-	// function for sending a POST request to register a single visitor from scratch
+	// function for sending a POST request to CREATE a single visitor from scratch
 	// in context the visitor accesses a website, enters his name and purpose and gets a number
 	//
 	// 1. get request data: name, purpose
