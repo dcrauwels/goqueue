@@ -46,21 +46,21 @@ func (urp *UsersResponseParameters) Populate(u database.User) {
 	urp.IsActive = u.IsActive
 }
 
-func ProcessUsersParameters(w http.ResponseWriter, reqParams UsersRequestParameters) (string, error) {
+func ProcessUsersParameters(w http.ResponseWriter, request UsersRequestParameters) (string, error) {
 	// check request for validity
 	//email valid
-	if err := strutils.ValidateEmail(reqParams.Email); err != nil {
+	if err := strutils.ValidateEmail(request.Email); err != nil {
 		jsonutils.WriteError(w, 400, err, "password formatting invalid: please use jdoe@provider.tld")
 		return "", err
 	}
 	//password valid (aA0)
-	if err := strutils.ValidatePassword(reqParams.Password); err != nil {
+	if err := strutils.ValidatePassword(request.Password); err != nil {
 		jsonutils.WriteError(w, 400, err, "password formatting invalid: please use lowercase, uppercase and/or numeric, between 8 and 30 characters.")
 		return "", err
 	}
 
 	// hash password
-	hashedPassword, err := auth.HashPassword(reqParams.Password)
+	hashedPassword, err := auth.HashPassword(request.Password)
 	if err != nil {
 		jsonutils.WriteError(w, 500, err, "password could not be hashed.")
 		return "", err

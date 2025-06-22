@@ -30,6 +30,7 @@ func main() {
 	apiCfg := api.ApiConfig{
 		DB:     dbQueries,
 		Secret: os.Getenv("SECRET"),
+		Env:    os.Getenv("ENV"),
 	}
 
 	// servemux
@@ -57,8 +58,8 @@ func main() {
 	/// register handlers from the admin package
 	//handler_admin.go
 	mux.HandleFunc("POST /admin/users", func(w http.ResponseWriter, r *http.Request) {
-		admin.AdminCreateUser(w, r, apiCfg)
-	}
+		admin.AdminCreateUser(w, r, apiCfg, apiCfg.DB)
+	})
 
 	// fileserver whenever
 

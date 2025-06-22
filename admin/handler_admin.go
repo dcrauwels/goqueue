@@ -3,68 +3,73 @@ package admin
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/dcrauwels/goqueue/api"
-	"github.com/dcrauwels/goqueue/auth"
 	"github.com/dcrauwels/goqueue/internal/database"
 	"github.com/dcrauwels/goqueue/jsonutils"
 	"github.com/google/uuid"
 )
 
-type adminCfgDependencies interface {
-	CreateUser(context.Context, database.CreateUserParams) (database.User, error)
-	SetIsAdminByID(context.Context, database.SetUserIsAdminByIDParams) (database.User, error)
-	GetUserByID(context.Context, uuid.UUID) (database.User, error)
+type configReader interface {
 	GetSecret() string
+	GetEnv() string
 }
 
-func AdminCreateUser(w http.ResponseWriter, r *http.Request, cfg adminCfgDependencies) {
+type databaseQueryer interface {
+	CreateUser(context.Context, database.CreateUserParams) (database.User, error)
+	SetUserIsAdminByID(context.Context, database.SetUserIsAdminByIDParams) (database.User, error)
+	GetUserByID(context.Context, uuid.UUID) (database.User, error)
+}
+
+func AdminCreateUser(w http.ResponseWriter, r *http.Request, cfg configReader, db databaseQueryer) {
 	// used for making an admin auth user
-	// 1. check admin status
-	isAdmin, err := auth.IsAdminFromHeader(w, r, cfg)
-	if err != nil {
-		jsonutils.WriteError(w, 400, err)
+	// 1. check dev env (there is no point checking isAdmin)
+	env := cfg.GetEnv()
+	if env != "DEV" {
+		jsonutils.WriteError(w, 403, errors.New("endpoint not approached in DEV enrironment"), "incorrect environment")
+		return
 	}
-	// 1a. check dev env
 
 	// 2. get req params: email & password
-	reqParams := api.UsersRequestParameters{}
+	request := api.UsersRequestParameters{}
 	decoder := json.NewDecoder(r.Body)
-	err := decoder.Decode(&reqParams)
+	err := decoder.Decode(&request)
 	if err != nil {
 		jsonutils.WriteError(w, 400, err, "incorrect json request structure")
 		return
 	}
-	hashedPassword, err := api.ProcessUsersParameters(w, reqParams)
+	hashedPassword, err := api.ProcessUsersParameters(w, request)
 	if err != nil {
-		return
+		return //already calls jsonutils.WriteError
 	}
 
 	// 3. make user
 	queryCreateParams := database.CreateUserParams{
-		Email:          reqParams.Email,
+		Email:          request.Email,
 		HashedPassword: hashedPassword,
+		FullName:       request.FullName,
 	}
-	createdUser, err := cfg.CreateUser(r.Context(), queryCreateParams)
+	createdUser, err := db.CreateUser(r.Context(), queryCreateParams)
 	if err != nil {
 		jsonutils.WriteError(w, 500, err, "error querying database for user creation")
 		return
 	}
 
 	// 4. set user admin
-	queryAdminParams := database.SetIsAdminByIDParams{
+	queryAdminParams := database.SetUserIsAdminByIDParams{
 		ID:      createdUser.ID,
 		IsAdmin: true,
 	}
-	adminUser, err := cfg.SetIsAdminByID(r.Context(), queryAdminParams)
+	adminUser, err := db.SetUserIsAdminByID(r.Context(), queryAdminParams)
 	if err != nil {
 		jsonutils.WriteError(w, 500, err, "error querying database for setting IsAdmin")
 		return
 	}
 
 	// 5. response
-	respParams := api.UsersResponseParameters{
+	response := api.UsersResponseParameters{
 		ID:        adminUser.ID,
 		CreatedAt: adminUser.CreatedAt,
 		UpdatedAt: adminUser.UpdatedAt,
@@ -72,14 +77,13 @@ func AdminCreateUser(w http.ResponseWriter, r *http.Request, cfg adminCfgDepende
 		IsAdmin:   adminUser.IsAdmin,
 		IsActive:  adminUser.IsActive,
 	}
-	jsonutils.WriteJSON(w, 200, respParams)
+	jsonutils.WriteJSON(w, 200, response)
 }
 
-func AdminDeleteUser(w http.ResponseWriter, r *http.Request, cfg adminCfgDependencies) {
-	// used for fully deleting a user from the database. admin env only.
-	// 1. check admin status
-
-	// 2. read request for user ID
-	// 3. run query for deletion
-	// 4. respond 204
-}
+//func AdminDeleteUser(w http.ResponseWriter, r *http.Request, cfg adminCfgDependencies) {
+// used for fully deleting a user from the database. admin env only.
+// 1. check dev environment
+// 2. read request for user ID
+// 3. run query for deletion
+// 4. respond 204
+//}
