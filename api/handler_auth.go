@@ -59,7 +59,7 @@ func (cfg *ApiConfig) HandlerLoginUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 3. generate access token
-	userAccessToken, err := auth.MakeJWT(user.ID, cfg.Secret, 60)
+	userAccessToken, err := auth.MakeJWT(user.ID, "user", cfg.Secret, 60)
 	if err != nil {
 		jsonutils.WriteError(w, 500, err, "error creating access token")
 		return
@@ -129,7 +129,7 @@ func (cfg *ApiConfig) HandlerRefreshUser(w http.ResponseWriter, r *http.Request)
 	}
 
 	// 3. generate access token
-	userAccessToken, err := auth.MakeJWT(reqParams.UserID, cfg.Secret, 60)
+	userAccessToken, err := auth.MakeJWT(reqParams.UserID, "user", cfg.Secret, 60)
 	if err != nil {
 		jsonutils.WriteError(w, 500, err, "error creating access token")
 		return
@@ -160,7 +160,7 @@ func (cfg *ApiConfig) HandlerRefreshUser(w http.ResponseWriter, r *http.Request)
 func (cfg *ApiConfig) HandlerLogoutUser(w http.ResponseWriter, r *http.Request) {
 	// for revoking USER refresh token
 	// 1. get user from token (auth.fromheader)
-	user, err := auth.UserFromHeader(w, r, cfg)
+	user, err := auth.UserFromHeader(w, r, cfg, cfg.DB)
 	if err != nil {
 		return
 	}

@@ -72,7 +72,7 @@ func ProcessUsersParameters(w http.ResponseWriter, request UsersRequestParameter
 func (cfg *ApiConfig) HandlerPostUsers(w http.ResponseWriter, r *http.Request) { // POST /api/users
 	// function to CREATE new user
 	// check for admin status in accessing user
-	userIsAdmin, err := auth.IsAdminFromHeader(w, r, cfg)
+	userIsAdmin, err := auth.IsAdminFromHeader(w, r, cfg, cfg.DB)
 	if err != nil || !userIsAdmin {
 		// already used jsonutils.WriteError in the auth.IsAdminFromHeader function. No need to repeat here
 		return
@@ -117,7 +117,7 @@ func (cfg *ApiConfig) HandlerPutUsers(w http.ResponseWriter, r *http.Request) { 
 	// NYI: fullname editing
 
 	// 1. get accessing user from header
-	accessingUser, err := auth.UserFromHeader(w, r, cfg)
+	accessingUser, err := auth.UserFromHeader(w, r, cfg, cfg.DB)
 	if err != nil {
 		// already used jsonutils.WriteError in the auth.UserFromHeader function. No need to repeat here
 		return
@@ -165,7 +165,7 @@ func (cfg *ApiConfig) HandlerPutUsersByID(w http.ResponseWriter, r *http.Request
 	// requires isadmin status from accessing user
 
 	// 1. check if accessing user is admin
-	isAdmin, err := auth.IsAdminFromHeader(w, r, cfg)
+	isAdmin, err := auth.IsAdminFromHeader(w, r, cfg, cfg.DB)
 	if err != nil {
 		return
 	} else if !isAdmin {
@@ -218,7 +218,7 @@ func (cfg *ApiConfig) HandlerGetUsers(w http.ResponseWriter, r *http.Request) { 
 	// requires isadmin status from accessing user
 
 	// 1. check if accessing user is admin
-	isAdmin, err := auth.IsAdminFromHeader(w, r, cfg)
+	isAdmin, err := auth.IsAdminFromHeader(w, r, cfg, cfg.DB)
 	if err != nil {
 		// auth.UserFromHeader() already calls jsonutils.WriteError()
 		return

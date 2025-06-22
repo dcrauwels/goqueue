@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"net/http"
 
 	"github.com/dcrauwels/goqueue/internal/database"
@@ -18,6 +19,8 @@ type databaseQueryer interface {
 	GetUserByID(context.Context, uuid.UUID) (database.User, error)
 	GetVisitorByID(context.Context, uuid.UUID) (database.Visitor, error)
 }
+
+var ErrWrongUserType = errors.New("wrong usertype")
 
 func AuthFromHeader[T any](
 	w http.ResponseWriter,
@@ -41,7 +44,7 @@ func AuthFromHeader[T any](
 		return zero, err
 	} else if userType != "user" {
 		jsonutils.WriteError(w, 400, err, "not logged in as "+expectedUserType)
-		return zero, err
+		return zero, ErrWrongUserType
 	}
 
 	//query for user by ID and run checks

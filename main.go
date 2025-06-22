@@ -42,7 +42,7 @@ func main() {
 	//handler_users.go
 	mux.HandleFunc("POST /api/users", apiCfg.HandlerPostUsers)
 	mux.HandleFunc("PUT /api/users", apiCfg.HandlerPutUsers)
-	mux.HandleFunc("PUT /api/users/{user_id}", apiCfg.HandlerPutUsersByID) //NYI
+	mux.HandleFunc("PUT /api/users/{user_id}", apiCfg.HandlerPutUsersByID)
 	mux.HandleFunc("GET /api/users", apiCfg.HandlerGetUsers)
 	mux.HandleFunc("GET /api/users/{user_id}", apiCfg.HandlerGetUsersByID)
 	//mux.HandleFunc("DELETE /api/users", apiCfg.HandlerDeleteUsers) NYI do I even want this
@@ -52,8 +52,9 @@ func main() {
 	mux.HandleFunc("POST /api/logout", apiCfg.HandlerLogoutUser)
 	//handler_visitors.go
 	mux.HandleFunc("POST /api/visitors", apiCfg.HandlerPostVisitors)
-	mux.HandleFunc("PUT /api/visitors/{visitor_id}", apiCfg.HandlerPutVisitors) // NYI
-	mux.HandleFunc("GET /api/visitors", apiCfg.HandlerGetVisitors)              // NYI
+	mux.HandleFunc("PUT /api/visitors/{visitor_id}", apiCfg.HandlerPutVisitorsByID) // NYI
+	mux.HandleFunc("GET /api/visitors", apiCfg.HandlerGetVisitors)                  // NYI
+	mux.HandleFunc("GET /api/visitors/{visitor_id}", apiCfg.HandlerGetVisitorsByID)
 	//handler_servicelogs.go NYI
 	/// register handlers from the admin package
 	//handler_admin.go

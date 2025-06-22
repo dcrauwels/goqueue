@@ -1,6 +1,7 @@
 package api
 
 import (
+	"database/sql"
 	"encoding/json"
 	"net/http"
 	"time"
@@ -12,30 +13,50 @@ import (
 	"github.com/google/uuid"
 )
 
-type VisitorsRequestParameters struct {
+type VisitorsPostRequestParameters struct {
 	Name    string `json:"name"`
 	Purpose string `json:"purpose"`
 }
 
-type VisitorsResponseParameters struct {
-	ID                 uuid.UUID `json:"id"`
-	CreatedAt          time.Time `json:"created_at"`
-	UpdatedAt          time.Time `json:"updated_at"`
-	WaitingSince       time.Time `json:"waiting_since"`
-	Name               string    `json:"name"`
-	Purpose            string    `json:"purpose"`
-	Status             int32     `json:"status"`
-	VisitorAccessToken string    `json:"visitor_access_token"`
+type VisitorsPutRequestParameters struct {
+	Name    string `json:"name"`
+	Purpose string `json:"purpose"`
+	Status  int32  `json:"status"`
 }
 
-func (cfg *ApiConfig) HandlerPostVisitors(w http.ResponseWriter, r *http.Request) {
+type VisitorsResponseParameters struct {
+	ID           uuid.UUID      `json:"id"`
+	CreatedAt    time.Time      `json:"created_at"`
+	UpdatedAt    time.Time      `json:"updated_at"`
+	WaitingSince time.Time      `json:"waiting_since"`
+	Name         sql.NullString `json:"name"`
+	Purpose      string         `json:"purpose"`
+	Status       int32          `json:"status"`
+}
+
+type VisitorsPOSTResponseParameters struct {
+	VisitorsResponseParameters
+	VisitorAccessToken string `json:"visitor_access_token"`
+}
+
+func (vrp *VisitorsResponseParameters) Populate(v database.Visitor) {
+	vrp.ID = v.ID
+	vrp.CreatedAt = v.CreatedAt
+	vrp.UpdatedAt = v.UpdatedAt
+	vrp.WaitingSince = v.WaitingSince
+	vrp.Name = v.Name
+	vrp.Purpose = v.Purpose
+	vrp.Status = v.Status
+}
+
+func (cfg *ApiConfig) HandlerPostVisitors(w http.ResponseWriter, r *http.Request) { // POST /api/visitors
 	// function for sending a POST request to CREATE a single visitor from scratch
 	// in context the visitor accesses a website, enters his name and purpose and gets a number
 	//
 	// 1. get request data: name, purpose
 	decoder := json.NewDecoder(r.Body)
-	reqParams := VisitorsRequestParameters{}
-	err := decoder.Decode(&reqParams)
+	request := VisitorsPostRequestParameters{}
+	err := decoder.Decode(&request)
 	if err != nil {
 		jsonutils.WriteError(w, 400, err, "JSON formatting invalid")
 		return
@@ -49,8 +70,8 @@ func (cfg *ApiConfig) HandlerPostVisitors(w http.ResponseWriter, r *http.Request
 
 	// 3. query DB: CreateVisitor
 	queryParams := database.CreateVisitorParams{
-		Name:    strutils.InitNullString(reqParams.Name), // name is currently nullable.
-		Purpose: reqParams.Purpose,
+		Name:    strutils.InitNullString(request.Name), // name is currently nullable.
+		Purpose: request.Purpose,
 	}
 	createdVisitor, err := cfg.DB.CreateVisitor(r.Context(), queryParams)
 	if err != nil {
@@ -59,35 +80,126 @@ func (cfg *ApiConfig) HandlerPostVisitors(w http.ResponseWriter, r *http.Request
 	}
 
 	// 4. make visitor access token
-	visitorAccessToken, err := auth.MakeJWT(createdVisitor.ID, cfg.Secret, 120)
+	visitorAccessToken, err := auth.MakeJWT(createdVisitor.ID, "visitor", cfg.Secret, 120)
 	if err != nil {
 		jsonutils.WriteError(w, 500, err, "could not create access token")
 		return
 	}
 
 	// 5. return response 201
-	responseParams := VisitorsResponseParameters{
-		ID:                 createdVisitor.ID,
-		CreatedAt:          createdVisitor.CreatedAt,
-		UpdatedAt:          createdVisitor.UpdatedAt,
-		WaitingSince:       createdVisitor.WaitingSince,
-		Name:               createdVisitor.Name.String,
-		Purpose:            createdVisitor.Purpose,
-		Status:             createdVisitor.Status,
-		VisitorAccessToken: visitorAccessToken,
+	response := VisitorsPOSTResponseParameters{}
+	response.Populate(createdVisitor)
+	response.VisitorAccessToken = visitorAccessToken
+	jsonutils.WriteJSON(w, 201, response)
+}
+
+func (cfg *ApiConfig) HandlerPutVisitorsByID(w http.ResponseWriter, r *http.Request) { // PUT /api/visitors/{visitor_id}
+	// 1. read visitor ID from endpoint URI
+	pv := r.PathValue("visitor_id")
+	visitorID, err := uuid.Parse(pv)
+	if err != nil {
+		jsonutils.WriteError(w, 400, err, "endpoint is not a valid ID")
+		return
 	}
-	jsonutils.WriteJSON(w, 201, responseParams)
+
+	// 2. read request data: JWT and PUT request
+	// 2.1 JWT
+	accessToken, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		jsonutils.WriteError(w, 401, err, "no authorization field in request header")
+		return
+	}
+
+	id, userType, err := auth.ValidateJWT(accessToken, cfg.GetSecret())
+	if err != nil {
+		jsonutils.WriteError(w, 403, err, "access token invalid") // is a 403 even the right response code here?
+		return
+	}
+
+	// 2.2 PUT request
+	decoder := json.NewDecoder(r.Body)
+	request := VisitorsPutRequestParameters{}
+	err = decoder.Decode(&request)
+	if err != nil {
+		jsonutils.WriteError(w, 400, err, "JSON formatting invalid")
+		return
+	}
+
+	// 3. authenticate: either for visitor with matching ID or user (both from JWT in 2)
+	if userType == "user" { // auth for user
+		accessingParty, err := cfg.DB.GetUserByID(r.Context(), id)
+		if err == sql.ErrNoRows {
+			jsonutils.WriteError(w, 404, err, "accessing user does not exist in database")
+			return
+		} else if err != nil {
+			jsonutils.WriteError(w, 500, err, "error querying database (GetUserByID)")
+			return
+		} else if !accessingParty.IsActive {
+			jsonutils.WriteError(w, 403, err, "accessing user account is inactive")
+			return
+		}
+	} else if userType == "visitor" { // auth for visitor
+		accessingParty, err := cfg.DB.GetVisitorByID(r.Context(), id)
+		if err == sql.ErrNoRows {
+			jsonutils.WriteError(w, 404, err, "accessing visitor does not exist in database")
+			return
+		} else if err != nil {
+			jsonutils.WriteError(w, 500, err, "error querying database (GetVisitorByID)")
+			return
+		} else if accessingParty.ID != visitorID { // so the visitor is trying to edit a different visitor. not allowed
+			jsonutils.WriteError(w, 403, err, "accessing visitor is not requested visitor")
+			return
+		}
+	} else { // in case usertype is neither "user" nor "visitor"
+		jsonutils.WriteError(w, 400, auth.ErrWrongUserType, "incorrect usertype in JWT")
+		return
+	}
+
+	// 4. validate request?
+	// 5. run query
+	queryParams := database.SetVisitorByIDParams{
+		ID:      visitorID,
+		Name:    strutils.InitNullString(request.Name),
+		Purpose: request.Purpose,
+		Status:  request.Status,
+	}
+	updatedVisitor, err := cfg.DB.SetVisitorByID(r.Context(), queryParams)
+	if err == sql.ErrNoRows {
+		jsonutils.WriteError(w, 404, err, "updated visitor does not exist in database")
+		return
+	} else if err != nil {
+		jsonutils.WriteError(w, 500, err, "error querying database (SetVisitorByID)")
+		return
+	}
+
+	// 6. write response
+	response := VisitorsResponseParameters{}
+	response.Populate(updatedVisitor)
+
+	jsonutils.WriteJSON(w, 200, response)
+
 }
 
-func (cfg *ApiConfig) HandlerPutVisitors(w http.ResponseWriter, r *http.Request) {
-	// 1. get request data, particularly visitor ID
-	// 2. validate? probably not
-	// 3. run query
-
+func (cfg *ApiConfig) HandlerGetVisitors(w http.ResponseWriter, r *http.Request) { // GET /api/visitors
+	// 1. read request: JWT
+	// 2. authenticate: only users should be allowed to retrieve this data
+	// 3. validate request: purpose
+	// 4. run query
+	// 5. write response
 }
 
-func (cfg *ApiConfig) HandlerGetVisitors(w http.ResponseWriter, r *http.Request) {
-	// 1. get request data, in particular whether we have a logged in user
-	// 2. validate request (purpose)
-	// 3. run query
+func (cfg *ApiConfig) HandlerGetVisitorsByID(w http.ResponseWriter, r *http.Request) { // GET /api/visitors/{visitor_id}
+	// 1. get visitor ID from endpoint
+	pv := r.PathValue("visitor_id")
+	visitorID, err := uuid.Parse(pv)
+	if err != nil {
+		jsonutils.WriteError(w, 400, err, "endpoint is not a valid ID")
+		return
+	}
+
+	// 2. read request: JWT
+	// 3. authenticate: either for visitor with matching ID or user (both from JWT in 2)
+	// 4. run query
+	// 5. write response
+
 }

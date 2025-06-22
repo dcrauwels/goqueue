@@ -29,3 +29,15 @@ ORDER BY waiting_since ASC;
 SELECT * FROM visitors
 WHERE waiting_since::date = CURRENT_DATE
 ORDER BY waiting_since ASC;
+
+-- name: SetVisitorByID :one
+UPDATE visitors
+SET name = $2, purpose = $3, status = $4, updated_at = NOW()
+WHERE id = $1
+RETURNING *;
+
+-- name: SetVisitorStatusByID :one
+UPDATE visitors
+SET status = $2, updated_at = NOW()
+WHERE id = $1
+RETURNING *;

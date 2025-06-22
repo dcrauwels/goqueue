@@ -176,3 +176,64 @@ func (q *Queries) GetWaitingVisitorsByPurpose(ctx context.Context, purpose strin
 	}
 	return items, nil
 }
+
+const setVisitorByID = `-- name: SetVisitorByID :one
+UPDATE visitors
+SET name = $2, purpose = $3, status = $4, updated_at = NOW()
+WHERE id = $1
+RETURNING id, created_at, updated_at, waiting_since, name, purpose, status
+`
+
+type SetVisitorByIDParams struct {
+	ID      uuid.UUID
+	Name    sql.NullString
+	Purpose string
+	Status  int32
+}
+
+func (q *Queries) SetVisitorByID(ctx context.Context, arg SetVisitorByIDParams) (Visitor, error) {
+	row := q.db.QueryRowContext(ctx, setVisitorByID,
+		arg.ID,
+		arg.Name,
+		arg.Purpose,
+		arg.Status,
+	)
+	var i Visitor
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.WaitingSince,
+		&i.Name,
+		&i.Purpose,
+		&i.Status,
+	)
+	return i, err
+}
+
+const setVisitorStatusByID = `-- name: SetVisitorStatusByID :one
+UPDATE visitors
+SET status = $2, updated_at = NOW()
+WHERE id = $1
+RETURNING id, created_at, updated_at, waiting_since, name, purpose, status
+`
+
+type SetVisitorStatusByIDParams struct {
+	ID     uuid.UUID
+	Status int32
+}
+
+func (q *Queries) SetVisitorStatusByID(ctx context.Context, arg SetVisitorStatusByIDParams) (Visitor, error) {
+	row := q.db.QueryRowContext(ctx, setVisitorStatusByID, arg.ID, arg.Status)
+	var i Visitor
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.WaitingSince,
+		&i.Name,
+		&i.Purpose,
+		&i.Status,
+	)
+	return i, err
+}

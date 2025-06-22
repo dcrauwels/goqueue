@@ -58,8 +58,8 @@ func TestUserJWT(t *testing.T) {
 	}
 
 	// wrong tokenSecret
-	wrongID, wrongType, err := ValidateJWT(jwt, "zasxzasx")
+	wrongID, _, err := ValidateJWT(jwt, "zasxzasx")
 	if err == nil {
-		t.Errorf(`ValidateJWT(jwt, "zasxzasx") = %v, %v; expected uuid.Nil, err`, wrongID, wrongType, err)
+		t.Errorf(`ValidateJWT(jwt, "zasxzasx") = %v, %v; expected uuid.Nil, err`, wrongID, err)
 	}
 }
