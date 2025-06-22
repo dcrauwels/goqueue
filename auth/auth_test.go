@@ -38,26 +38,28 @@ func TestPassword(t *testing.T) {
 func TestUserJWT(t *testing.T) {
 	// arguments
 	userID := uuid.New()
+	userType := "user"
 	tokenSecret := "qqpp1001"
 
 	// make jwt
-	jwt, err := MakeJWT(userID, tokenSecret, 60)
+	jwt, err := MakeJWT(userID, userType, tokenSecret, 60)
 	if err != nil {
 		t.Errorf(`MakeJWT(userID, "qqpp1001", time.Second) = %s, %v; expected token, nil`, jwt, err)
 	}
 
 	// straight validation
-	validatedID, err := ValidateJWT(jwt, tokenSecret)
+	validatedID, validatedType, err := ValidateJWT(jwt, tokenSecret)
 	if err != nil {
 		t.Errorf(`ValidateJWT(jwt, "qqpp1001") = %s, %v; expected UUID, nil`, validatedID.String(), err)
-	}
-	if userID.String() != validatedID.String() {
+	} else if userID.String() != validatedID.String() {
 		t.Errorf(`userID.String() == validatedID.String() returns false; expected true`)
+	} else if userType != validatedType {
+		t.Errorf(`userType == validatedType returns false; expected true`)
 	}
 
 	// wrong tokenSecret
-	wrongID, err := ValidateJWT(jwt, "zasxzasx")
+	wrongID, wrongType, err := ValidateJWT(jwt, "zasxzasx")
 	if err == nil {
-		t.Errorf(`ValidateJWT(jwt, "zasxzasx") = %v, %v; expected uuid.Nil, err`, wrongID, err)
+		t.Errorf(`ValidateJWT(jwt, "zasxzasx") = %v, %v; expected uuid.Nil, err`, wrongID, wrongType, err)
 	}
 }
