@@ -22,6 +22,21 @@ type databaseQueryer interface {
 
 var ErrWrongUserType = errors.New("wrong usertype")
 
+func UserTypeFromHeader(w http.ResponseWriter, r *http.Request, cfg configReader) (string, error) {
+	// short function to retrieve purely the usertype from the JWT in the header authorization field
+	accessToken, err := GetBearerToken(r.Header)
+	if err != nil {
+		jsonutils.WriteError(w, 401, err, "no authorization field in request header")
+		return "", err
+	}
+	_, userType, err := ValidateJWT(accessToken, cfg.GetSecret())
+	if err != nil {
+		jsonutils.WriteError(w, 403, err, "access token invalid")
+		return "", err
+	}
+	return userType, nil
+}
+
 func AuthFromHeader[T any](
 	w http.ResponseWriter,
 	r *http.Request,
