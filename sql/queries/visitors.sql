@@ -11,6 +11,9 @@ VALUES (
 )
 RETURNING *;
 
+-- name: GetVisitors :many
+SELECT * FROM visitors;
+
 -- name: GetVisitorByID :one
 SELECT * FROM visitors
 WHERE id = $1;

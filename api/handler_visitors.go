@@ -155,7 +155,8 @@ func (cfg *ApiConfig) HandlerPutVisitorsByID(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// 4. validate request?
+	// 4. validate request? Purpose mainly. NYI
+
 	// 5. run query
 	queryParams := database.SetVisitorByIDParams{
 		ID:      visitorID,
@@ -182,10 +183,34 @@ func (cfg *ApiConfig) HandlerPutVisitorsByID(w http.ResponseWriter, r *http.Requ
 
 func (cfg *ApiConfig) HandlerGetVisitors(w http.ResponseWriter, r *http.Request) { // GET /api/visitors
 	// 1. read request: JWT
-	// 2. authenticate: only users should be allowed to retrieve this data
-	// 3. validate request: purpose
-	// 4. run query
-	// 5. write response
+	accessingUser, err := auth.UserFromHeader(w, r, cfg, cfg.DB)
+	if err == auth.ErrWrongUserType {
+		jsonutils.WriteError(w, 403, err, "not logged in as user") // this is auth
+		return
+	} else if err != nil {
+		return // auth.UserFromHeader() already calls jsonutils.WriteError() if something is wrong or the usertype isnt "user"
+	} else if !accessingUser.IsActive {
+		jsonutils.WriteError(w, 403, err, "logged in user is not active") // when would this even happen?
+		return
+	}
+
+	// 2. validate request: purpose NYI
+
+	// 3. run query
+	visitors, err := cfg.DB.GetVisitors(r.Context())
+	if err == sql.ErrNoRows {
+		jsonutils.WriteError(w, 404, err, "no visitors found in database")
+		return
+	} else if err != nil {
+		jsonutils.WriteError(w, 500, err, "error querying database")
+		return
+	}
+
+	// 4. write response
+	response := make([]VisitorsResponseParameters, len(visitors))
+	for i, u := range visitors {
+		response[i].Populate(u)
+	}
 }
 
 func (cfg *ApiConfig) HandlerGetVisitorsByID(w http.ResponseWriter, r *http.Request) { // GET /api/visitors/{visitor_id}

@@ -238,7 +238,6 @@ func (cfg *ApiConfig) HandlerGetUsers(w http.ResponseWriter, r *http.Request) { 
 	// 3. write response
 	response := make([]UsersResponseParameters, len(users))
 	for i, u := range users {
-		response[i] = UsersResponseParameters{}
 		response[i].Populate(u)
 	}
 	jsonutils.WriteJSON(w, 200, response)
