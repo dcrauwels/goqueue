@@ -3,24 +3,12 @@ package auth
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"net/http"
 
 	"github.com/dcrauwels/goqueue/internal/database"
 	"github.com/dcrauwels/goqueue/jsonutils"
 	"github.com/google/uuid"
 )
-
-type configReader interface {
-	GetSecret() string
-}
-
-type databaseQueryer interface {
-	GetUserByID(context.Context, uuid.UUID) (database.User, error)
-	GetVisitorByID(context.Context, uuid.UUID) (database.Visitor, error)
-}
-
-var ErrWrongUserType = errors.New("wrong usertype")
 
 func UserTypeFromHeader(w http.ResponseWriter, r *http.Request, cfg configReader) (string, error) {
 	// short function to retrieve purely the usertype from the JWT in the header authorization field
