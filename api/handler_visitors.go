@@ -113,7 +113,15 @@ func (cfg *ApiConfig) HandlerPutVisitorsByID(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// 3. validate request? Purpose mainly. NYI
+	// 3. validate request? Purpose mainly.
+	_, err = cfg.DB.GetPurposesByID(r.Context(), request.PurposeID)
+	if err == sql.ErrNoRows {
+		jsonutils.WriteError(w, 404, err, "purpose not found in database")
+		return
+	} else if err != nil {
+		jsonutils.WriteError(w, 500, err, "error querying database (GetPurposesById)")
+		return
+	}
 
 	// 4. run query
 	queryParams := database.SetVisitorByIDParams{
@@ -152,16 +160,40 @@ func (cfg *ApiConfig) HandlerGetVisitors(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// 2. validate request: purpose NYI
+	var visitors []database.Visitor
 
-	// 3. run query
-	visitors, err := cfg.DB.GetVisitors(r.Context())
-	if err == sql.ErrNoRows {
-		jsonutils.WriteError(w, 404, err, "no visitors found in database")
-		return
-	} else if err != nil {
-		jsonutils.WriteError(w, 500, err, "error querying database")
-		return
+	// 2. check for purpose query parameter
+	queryPurpose := r.URL.Query().Get("purpose")
+	if queryPurpose != "" {
+		purpose, err := cfg.DB.GetPurposesByName(r.Context(), queryPurpose)
+		if err == sql.ErrNoRows {
+			jsonutils.WriteError(w, 404, err, "purpose not found in database")
+			return
+		} else if err != nil {
+			jsonutils.WriteError(w, 500, err, "error querying database (GetPurposesByName)")
+			return
+		}
+
+		// 3a. run query in case there is a purpose qp
+
+		visitors, err = cfg.DB.GetVisitorsByPurpose(r.Context(), purpose.ID)
+		if err == sql.ErrNoRows {
+			jsonutils.WriteError(w, 404, err, "no visitors found in database for purpose "+queryPurpose)
+			return
+		} else if err != nil {
+			jsonutils.WriteError(w, 404, err, "error querying database (GetVisitorsByPurpose)")
+			return
+		}
+
+	} else { // 3b. run query in case there is no qp
+		visitors, err = cfg.DB.GetVisitors(r.Context())
+		if err == sql.ErrNoRows {
+			jsonutils.WriteError(w, 404, err, "no visitors found in database")
+			return
+		} else if err != nil {
+			jsonutils.WriteError(w, 500, err, "error querying database")
+			return
+		}
 	}
 
 	// 4. write response
@@ -169,6 +201,10 @@ func (cfg *ApiConfig) HandlerGetVisitors(w http.ResponseWriter, r *http.Request)
 	for i, u := range visitors {
 		response[i].Populate(u)
 	}
+}
+
+func (cfg *ApiConfig) HandlerGetVisitorsByPurpose(w http.ResponseWriter, r *http.Request) { // GET
+
 }
 
 func (cfg *ApiConfig) HandlerGetVisitorsByID(w http.ResponseWriter, r *http.Request) { // GET /api/visitors/{visitor_id}

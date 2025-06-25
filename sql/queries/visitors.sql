@@ -7,7 +7,7 @@ VALUES (
     NOW(),
     $1,
     $2,
-    0
+    0 --status 
 )
 RETURNING *;
 
@@ -21,12 +21,17 @@ WHERE visitors.id = $1;
 
 -- name: GetVisitorsByStatus :many
 SELECT * FROM visitors
-WHERE status = $1
+WHERE status = $1 -- status
+ORDER BY waiting_since ASC;
+
+-- name: GetVisitorsByPurpose :many
+SELECT * FROM visitors
+WHERE purpose_id = $1
 ORDER BY waiting_since ASC;
 
 -- name: GetWaitingVisitorsByPurpose :many
 SELECT * FROM visitors
-WHERE purpose_id = $1 AND status = 1
+WHERE purpose_id = $1 AND status = 1 -- this whole status business is still not implemented correctly
 ORDER BY waiting_since ASC;
 
 -- name: GetVisitorsForToday :many
@@ -36,12 +41,12 @@ ORDER BY waiting_since ASC;
 
 -- name: SetVisitorByID :one
 UPDATE visitors
-SET name = $2, purpose_id = $3, status = $4, updated_at = NOW()
+SET name = $2, purpose_id = $3, status = $4, updated_at = NOW() -- status 
 WHERE id = $1
 RETURNING *;
 
 -- name: SetVisitorStatusByID :one
 UPDATE visitors
-SET status = $2, updated_at = NOW()
+SET status = $2, updated_at = NOW() --status 
 WHERE id = $1
 RETURNING *;

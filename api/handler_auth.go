@@ -53,7 +53,7 @@ func (cfg *ApiConfig) HandlerLoginUser(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		jsonutils.WriteError(w, 403, err, "user already logged in, use /api/refresh endpoint instead")
 		return
-	} else if err != nil && err != sql.ErrNoRows { // tautological for clarity
+	} else if err != sql.ErrNoRows {
 		jsonutils.WriteError(w, 500, err, "error querying database")
 		return
 	}
