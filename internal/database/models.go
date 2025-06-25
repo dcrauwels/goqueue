@@ -18,6 +18,14 @@ type Desk struct {
 	IsActive    bool
 }
 
+type Purpose struct {
+	ID              uuid.UUID
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+	PurposeName     string
+	ParentPurposeID uuid.UUID
+}
+
 type RefreshToken struct {
 	Token     string
 	CreatedAt time.Time
@@ -56,6 +64,6 @@ type Visitor struct {
 	UpdatedAt    time.Time
 	WaitingSince time.Time
 	Name         sql.NullString
-	Purpose      string
+	PurposeID    uuid.UUID
 	Status       int32
 }

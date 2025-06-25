@@ -1,5 +1,5 @@
 -- name: CreateVisitor :one
-INSERT INTO visitors (id, created_at, updated_at, waiting_since, name, purpose, status)
+INSERT INTO visitors (id, created_at, updated_at, waiting_since, name, purpose_id, status)
 VALUES (
     gen_random_uuid(),
     NOW(),
@@ -14,9 +14,10 @@ RETURNING *;
 -- name: GetVisitors :many
 SELECT * FROM visitors;
 
+
 -- name: GetVisitorByID :one
 SELECT * FROM visitors
-WHERE id = $1;
+WHERE visitors.id = $1;
 
 -- name: GetVisitorsByStatus :many
 SELECT * FROM visitors
@@ -25,7 +26,7 @@ ORDER BY waiting_since ASC;
 
 -- name: GetWaitingVisitorsByPurpose :many
 SELECT * FROM visitors
-WHERE purpose = $1 AND status = 1
+WHERE purpose_id = $1 AND status = 1
 ORDER BY waiting_since ASC;
 
 -- name: GetVisitorsForToday :many
@@ -35,7 +36,7 @@ ORDER BY waiting_since ASC;
 
 -- name: SetVisitorByID :one
 UPDATE visitors
-SET name = $2, purpose = $3, status = $4, updated_at = NOW()
+SET name = $2, purpose_id = $3, status = $4, updated_at = NOW()
 WHERE id = $1
 RETURNING *;
 

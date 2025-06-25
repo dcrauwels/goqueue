@@ -14,14 +14,14 @@ import (
 )
 
 type VisitorsPostRequestParameters struct {
-	Name    string `json:"name"`
-	Purpose string `json:"purpose"`
+	Name      string    `json:"name"`
+	PurposeID uuid.UUID `json:"purpose_id"`
 }
 
 type VisitorsPutRequestParameters struct {
-	Name    string `json:"name"`
-	Purpose string `json:"purpose"`
-	Status  int32  `json:"status"`
+	Name      string    `json:"name"`
+	PurposeID uuid.UUID `json:"purpose_id"`
+	Status    int32     `json:"status"`
 }
 
 type VisitorsResponseParameters struct {
@@ -30,7 +30,7 @@ type VisitorsResponseParameters struct {
 	UpdatedAt    time.Time      `json:"updated_at"`
 	WaitingSince time.Time      `json:"waiting_since"`
 	Name         sql.NullString `json:"name"`
-	Purpose      string         `json:"purpose"`
+	PurposeID    uuid.UUID      `json:"purpose_id"`
 	Status       int32          `json:"status"`
 }
 
@@ -45,7 +45,7 @@ func (vrp *VisitorsResponseParameters) Populate(v database.Visitor) {
 	vrp.UpdatedAt = v.UpdatedAt
 	vrp.WaitingSince = v.WaitingSince
 	vrp.Name = v.Name
-	vrp.Purpose = v.Purpose
+	vrp.PurposeID = v.PurposeID
 	vrp.Status = v.Status
 }
 
@@ -62,16 +62,20 @@ func (cfg *ApiConfig) HandlerPostVisitors(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// 2. check purpose for validity NYI
-	// these should be user defined, meaning a new migration is needed to:
-	// a. CREATE TABLE purposes
-	// b. UPDATE TABLE visitors ADD CONSTRAINT fk_purpose FOREIGN KEY purpose REFERENCES purposes (id)
-	// not sure on b honestly. May need to down migrate
+	// 2. check purpose for validity
+	purpose, err := cfg.DB.GetPurposesByID(r.Context(), request.PurposeID)
+	if err == sql.ErrNoRows {
+		jsonutils.WriteError(w, 404, err, "purpose not found in database, please register first")
+		return
+	} else if err != nil {
+		jsonutils.WriteError(w, 500, err, "error querying database (GetPurposesByName)")
+		return
+	}
 
 	// 3. query DB: CreateVisitor
 	queryParams := database.CreateVisitorParams{
-		Name:    strutils.InitNullString(request.Name), // name is currently nullable.
-		Purpose: request.Purpose,
+		Name:      strutils.InitNullString(request.Name), // name is currently nullable.
+		PurposeID: purpose.ID,
 	}
 	createdVisitor, err := cfg.DB.CreateVisitor(r.Context(), queryParams)
 	if err != nil {
@@ -95,7 +99,7 @@ func (cfg *ApiConfig) HandlerPostVisitors(w http.ResponseWriter, r *http.Request
 
 func (cfg *ApiConfig) HandlerPutVisitorsByID(w http.ResponseWriter, r *http.Request) { // PUT /api/visitors/{visitor_id}
 	// 1. Read endpoint URI for visitor ID, JWT for accessing user and authenticate based on either.
-	visitorID, err := cfg.VisitorsById(w, r)
+	visitorID, err := auth.VisitorsByID(w, r, cfg, cfg.DB)
 	if err != nil {
 		return
 	}
@@ -113,10 +117,10 @@ func (cfg *ApiConfig) HandlerPutVisitorsByID(w http.ResponseWriter, r *http.Requ
 
 	// 4. run query
 	queryParams := database.SetVisitorByIDParams{
-		ID:      visitorID,
-		Name:    strutils.InitNullString(request.Name),
-		Purpose: request.Purpose,
-		Status:  request.Status,
+		ID:        visitorID,
+		Name:      strutils.InitNullString(request.Name),
+		PurposeID: request.PurposeID,
+		Status:    request.Status,
 	}
 	updatedVisitor, err := cfg.DB.SetVisitorByID(r.Context(), queryParams)
 	if err == sql.ErrNoRows {
@@ -171,9 +175,9 @@ func (cfg *ApiConfig) HandlerGetVisitorsByID(w http.ResponseWriter, r *http.Requ
 	// 1. get visitor ID from endpoint
 	// 2. read request: JWT
 	// 3. authenticate: either for visitor with matching ID or user (both from JWT in 2)
-	visitorID, err := cfg.VisitorsById(w, r)
+	visitorID, err := auth.VisitorsByID(w, r, cfg, cfg.DB)
 	if err != nil {
-		return // visitorsbyID already handles all the jsonutils.WriteError() requirements and handles the authentication.
+		return // visitorsbyID already handles all the jsonutils.WriteError() requirements as well as the authentication. No error means authentication is fine.
 	}
 
 	// 4. run query
@@ -191,64 +195,4 @@ func (cfg *ApiConfig) HandlerGetVisitorsByID(w http.ResponseWriter, r *http.Requ
 	response.Populate(visitor)
 	jsonutils.WriteJSON(w, 200, response)
 
-}
-
-func (cfg *ApiConfig) VisitorsById(w http.ResponseWriter, r *http.Request) (uuid.UUID, error) {
-	// boilerplate for GET and PUT /api/visitors/{visitor_id}
-	// not sure the second and third return values (accessingID and userType)  are really needed
-	// 1. read visitor ID from endpoint URI
-	pv := r.PathValue("visitor_id")
-	visitorID, err := uuid.Parse(pv)
-	if err != nil {
-		jsonutils.WriteError(w, 400, err, "endpoint is not a valid ID")
-		return visitorID, err
-	}
-
-	// 2. read request data: JWT
-	accessToken, err := auth.GetBearerToken(r.Header)
-	if err != nil {
-		jsonutils.WriteError(w, 401, err, "no authorization field in request header")
-		return visitorID, err
-	}
-
-	accessingID, userType, err := auth.ValidateJWT(accessToken, cfg.GetSecret())
-	if err != nil {
-		jsonutils.WriteError(w, 403, err, "access token invalid") // is a 403 even the right response code here?
-		return visitorID, err
-	}
-
-	// 3. authenticate: either for visitor with matching ID or user (both from JWT in 2)
-	if userType == "user" { // auth for user
-		accessingParty, err := cfg.DB.GetUserByID(r.Context(), accessingID)
-		if err == sql.ErrNoRows {
-			jsonutils.WriteError(w, 404, err, "accessing user does not exist in database")
-			return visitorID, err
-		} else if err != nil {
-			jsonutils.WriteError(w, 500, err, "error querying database (GetUserByID)")
-			return visitorID, err
-		} else if !accessingParty.IsActive {
-			jsonutils.WriteError(w, 403, auth.ErrWrongUserType, "accessing user account is inactive")
-			return visitorID, auth.ErrWrongUserType
-		}
-	} else if userType == "visitor" { // auth for visitor
-		accessingParty, err := cfg.DB.GetVisitorByID(r.Context(), accessingID)
-		if err == sql.ErrNoRows {
-			jsonutils.WriteError(w, 404, err, "accessing visitor does not exist in database")
-			return visitorID, err
-		} else if err != nil {
-			jsonutils.WriteError(w, 500, err, "error querying database (GetVisitorByID)")
-			return visitorID, err
-		} else if accessingParty.ID != visitorID { // so the visitor is trying to edit a different visitor. not allowed
-			jsonutils.WriteError(w, 403, auth.ErrVisitorMismatch, "accessing visitor is not requested visitor")
-			return visitorID, auth.ErrVisitorMismatch
-		} else if accessingParty.ID != accessingID { // sanity check
-			jsonutils.WriteError(w, 500, auth.ErrVisitorMismatch, "accessing visitor is not corresponding to database")
-			return visitorID, auth.ErrVisitorMismatch
-		}
-	} else { // in case usertype is neither "user" nor "visitor"
-		jsonutils.WriteError(w, 400, auth.ErrWrongUserType, "incorrect usertype in JWT")
-		return visitorID, auth.ErrWrongUserType
-	}
-
-	return visitorID, nil
 }
