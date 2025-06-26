@@ -29,6 +29,11 @@ SELECT * FROM visitors
 WHERE purpose_id = $1
 ORDER BY waiting_since ASC;
 
+-- name: GetVisitorsByPurposeStatus :many
+SELECT * FROM visitors
+WHERE purpose_id = $1 AND status = $2
+ORDER BY waiting_since ASC;
+
 -- name: GetWaitingVisitorsByPurpose :many
 SELECT * FROM visitors
 WHERE purpose_id = $1 AND status = 1 -- this whole status business is still not implemented correctly

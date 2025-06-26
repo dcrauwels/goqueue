@@ -21,7 +21,7 @@ VALUES (
     NOW(),
     $1,
     $2,
-    0
+    0 --status 
 )
 RETURNING id, created_at, updated_at, waiting_since, name, purpose_id, status
 `
@@ -138,9 +138,51 @@ func (q *Queries) GetVisitorsByPurpose(ctx context.Context, purposeID uuid.UUID)
 	return items, nil
 }
 
+const getVisitorsByPurposeStatus = `-- name: GetVisitorsByPurposeStatus :many
+SELECT id, created_at, updated_at, waiting_since, name, purpose_id, status FROM visitors
+WHERE purpose_id = $1 AND status = $2
+ORDER BY waiting_since ASC
+`
+
+type GetVisitorsByPurposeStatusParams struct {
+	PurposeID uuid.UUID
+	Status    int32
+}
+
+func (q *Queries) GetVisitorsByPurposeStatus(ctx context.Context, arg GetVisitorsByPurposeStatusParams) ([]Visitor, error) {
+	rows, err := q.db.QueryContext(ctx, getVisitorsByPurposeStatus, arg.PurposeID, arg.Status)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Visitor
+	for rows.Next() {
+		var i Visitor
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.WaitingSince,
+			&i.Name,
+			&i.PurposeID,
+			&i.Status,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getVisitorsByStatus = `-- name: GetVisitorsByStatus :many
 SELECT id, created_at, updated_at, waiting_since, name, purpose_id, status FROM visitors
-WHERE status = $1
+WHERE status = $1 -- status
 ORDER BY waiting_since ASC
 `
 
@@ -214,7 +256,7 @@ func (q *Queries) GetVisitorsForToday(ctx context.Context) ([]Visitor, error) {
 
 const getWaitingVisitorsByPurpose = `-- name: GetWaitingVisitorsByPurpose :many
 SELECT id, created_at, updated_at, waiting_since, name, purpose_id, status FROM visitors
-WHERE purpose_id = $1 AND status = 1
+WHERE purpose_id = $1 AND status = 1 -- this whole status business is still not implemented correctly
 ORDER BY waiting_since ASC
 `
 
@@ -251,7 +293,7 @@ func (q *Queries) GetWaitingVisitorsByPurpose(ctx context.Context, purposeID uui
 
 const setVisitorByID = `-- name: SetVisitorByID :one
 UPDATE visitors
-SET name = $2, purpose_id = $3, status = $4, updated_at = NOW()
+SET name = $2, purpose_id = $3, status = $4, updated_at = NOW() -- status 
 WHERE id = $1
 RETURNING id, created_at, updated_at, waiting_since, name, purpose_id, status
 `
@@ -285,7 +327,7 @@ func (q *Queries) SetVisitorByID(ctx context.Context, arg SetVisitorByIDParams) 
 
 const setVisitorStatusByID = `-- name: SetVisitorStatusByID :one
 UPDATE visitors
-SET status = $2, updated_at = NOW()
+SET status = $2, updated_at = NOW() --status 
 WHERE id = $1
 RETURNING id, created_at, updated_at, waiting_since, name, purpose_id, status
 `
