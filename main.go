@@ -62,7 +62,9 @@ func main() {
 		admin.AdminCreateUser(w, r, apiCfg, apiCfg.DB)
 	})
 
-	// fileserver whenever
+	// fileserver
+	fS := http.FileServer(http.Dir("./frontend/"))
+	mux.Handle("/", fS)
 
 	// server
 	s := http.Server{
