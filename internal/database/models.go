@@ -23,7 +23,7 @@ type Purpose struct {
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 	PurposeName     string
-	ParentPurposeID uuid.UUID
+	ParentPurposeID uuid.NullUUID
 }
 
 type RefreshToken struct {

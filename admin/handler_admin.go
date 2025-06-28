@@ -27,7 +27,7 @@ func AdminCreateUser(w http.ResponseWriter, r *http.Request, cfg configReader, d
 	// used for making an admin auth user
 	// 1. check dev env (there is no point checking isAdmin)
 	env := cfg.GetEnv()
-	if env != "DEV" {
+	if env != "dev" {
 		jsonutils.WriteError(w, 403, errors.New("endpoint not approached in DEV enrironment"), "incorrect environment")
 		return
 	}

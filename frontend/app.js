@@ -88,20 +88,20 @@ function checkHealth() {
 // Auth functions
 function login() {
     console.log('login called');
-    const username = document.getElementById('loginUsername').value;
+    const email = document.getElementById('loginEmail').value;
     const password = document.getElementById('loginPassword').value;
     
-    if (!username || !password) {
+    if (!email || !password) {
         alert('Please enter both username and password');
         return;
     }
 
-    const loginData = { username: username, password: password };
+    const loginData = { email: email, password: password };
     makeRequest('POST', '/api/login', loginData, false).then(function(response) {
-        if (response.ok && response.data.token) {
-            authToken = response.data.token;
-            if (response.data.refresh_token) {
-                refreshTokenValue = response.data.refresh_token;
+        if (response.ok && response.data.user_access_token) {
+            authToken = response.data.user_access_token;
+            if (response.data.user_refresh_token) {
+                refreshTokenValue = response.data.user_refresh_token;
             }
             updateAuthStatus();
         }

@@ -55,6 +55,11 @@ func main() {
 	mux.HandleFunc("PUT /api/visitors/{visitor_id}", apiCfg.HandlerPutVisitorsByID)
 	mux.HandleFunc("GET /api/visitors", apiCfg.HandlerGetVisitors)
 	mux.HandleFunc("GET /api/visitors/{visitor_id}", apiCfg.HandlerGetVisitorsByID)
+	//handler_purposes.go
+	mux.HandleFunc("POST /api/purposes", apiCfg.HandlerPostPurposes)
+	mux.HandleFunc("PUT /api/purposes/{purpose_id}", apiCfg.HandlerPutPurposesByID)
+	mux.HandleFunc("GET /api/purposes", apiCfg.HandlerGetPurposes)
+	mux.HandleFunc("GET /api/purposes/{purpose_id}", apiCfg.HandlerGetPurposesByID)
 	//handler_servicelogs.go NYI
 	/// register handlers from the admin package
 	//handler_admin.go

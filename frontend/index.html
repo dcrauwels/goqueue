@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Queue Management System</title>
+    <title>GoQueue</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -103,7 +103,7 @@
     </style>
 </head>
 <body>
-    <h1>Queue Management System - Test Frontend</h1>
+    <h1>GoQueue - Test Frontend</h1>
     
     <div class="auth-status" id="authStatus">Not authenticated</div>
 
@@ -123,8 +123,8 @@
             
             <h3>Login</h3>
             <div class="form-group">
-                <label>Username:</label>
-                <input type="text" id="loginUsername" placeholder="Enter username">
+                <label>Email:</label>
+                <input type="text" id="loginEmail" placeholder="Enter user email address">
             </div>
             <div class="form-group">
                 <label>Password:</label>
@@ -148,7 +148,7 @@
             <h3>Create User</h3>
             <div class="form-group">
                 <label>User Data (JSON):</label>
-                <textarea id="newUserData" rows="4" placeholder='{"name": "John Doe", "email": "john@example.com", "role": "admin"}'></textarea>
+                <textarea id="newUserData" rows="4" placeholder='{"email": "j.doe@email.com", "password": "ilovecats123", "full_name": "John Doe"}'></textarea>
             </div>
             <button type="button" onclick="createUser()">Create User</button>
             <div id="createUserResponse" class="response" style="display: none;"></div>
