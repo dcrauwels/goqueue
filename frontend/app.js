@@ -104,7 +104,9 @@ function login() {
                 refreshTokenValue = response.data.user_refresh_token;
             }
             updateAuthStatus();
+            setCookie('accessToken', authToken, 7)
         }
+        
         displayResponse('loginResponse', response);
     });
 }
@@ -252,6 +254,36 @@ function updateVisitor() {
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM loaded, initializing...');
+    getCookie('accessToken')
     updateAuthStatus();
     console.log('Script loaded successfully');
 });
+
+// cookie handling
+
+// distribute cookie
+function setCookie(name, value, days) {
+    console.log('setCookie called')
+    let expires = '';
+    if (days) {
+        const date = new Date();
+        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+        expires = '; expires=' + date.toUTCString();
+    }
+    document.cookie = name + '=' + (value || '') + expires + '; path=/; SameSite=Lax';
+    // Consider adding 'Secure;' in production if using HTTPS
+    // document.cookie = name + '=' + (value || '') + expires + '; path=/; SameSite=Lax; Secure';
+}
+
+// retrieve cookie
+function getCookie(name) {
+    console.log('getCookie called with name ' + name)
+    const nameEQ = name + '=';
+    const ca = document.cookie.split(';');
+    for (let i = 0; i < ca.length; i++) {
+        let c = ca[i];
+        while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+        if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+    }
+    return null;
+}
