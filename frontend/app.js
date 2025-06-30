@@ -254,7 +254,7 @@ function updateVisitor() {
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM loaded, initializing...');
-    getCookie('accessToken')
+    authToken = getCookie('accessToken');
     updateAuthStatus();
     console.log('Script loaded successfully');
 });
