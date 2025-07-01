@@ -183,8 +183,8 @@ function updateUser() {
     }
 }
 
-function updateUserGeneral() {
-    console.log('updateUserGeneral called');
+function updateUserSelf() {
+    console.log('updateUserSelf called');
     const dataText = document.getElementById('updateUserData').value;
     try {
         const userData = JSON.parse(dataText);
@@ -199,6 +199,58 @@ function updateUserGeneral() {
         });
     }
 }
+
+// Purpose functions
+function createPurpose() {
+    console.log('createPurpose called');
+    const dataText = document.getElementById('newPurposeData').value;
+    try {
+        const purposeData = JSON.parse(dataText);
+        makeRequest('POST', '/api/purposes', purposeData).then(function(response) {
+            displayResponse('createPurposeResponse', response);
+        });
+    } catch (error) {
+        displayResponse('createPurposeResponse', {
+            status: 0,
+            data: 'Invalid JSON: ' + error.message,
+            ok: false
+        });
+    }
+}
+
+function getPurposes() {    
+    console.log('getPurposes called');
+    const purposeId = document.getElementById('getPurposeId').value;
+    const endpoint = purposeId ? '/api/purposes/' + purposeId : '/api/purposes';
+    makeRequest('GET', endpoint).then(function(response) {
+        displayResponse('getPurposesResponse', response);
+    });
+}
+
+function updatePurpose() {
+    console.log('updatePurpose called');
+    const purposeId = document.getElementById('updatePurposeId').value;
+    const dataText = document.getElementById('updatePurposeData').value;
+    
+    if (!purposeId) {
+        alert('Please enter a purpose ID');
+        return;
+    }
+
+    try {
+        const purposeData = JSON.parse(dataText);
+        makeRequest('PUT', '/api/purposes/' + purposeId, purposeData).then(function(response) {
+            displayResponse('updatePurposeResponse', response);
+        });
+    } catch (error) {
+        displayResponse('updatePurposeResponse', {
+            status: 0,
+            data: 'Invalid JSON: ' + error.message,
+            ok: false
+        });
+    }
+}
+
 
 // Visitor functions
 function createVisitor() {

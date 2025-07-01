@@ -52,7 +52,7 @@
             <h3>Create User</h3>
             <div class="form-group">
                 <label>User Data (JSON):</label>
-                <textarea id="newUserData" rows="4" placeholder='{"email": "j.doe@email.com", "password": "ilovecats123", "full_name": "John Doe"}'></textarea>
+                <textarea id="newUserData" rows="2" placeholder='{"email": "j.doe@email.com", "password": "ilovecats123", "full_name": "John Doe"}'></textarea>
             </div>
             <button type="button" onclick="createUser()">Create User</button>
             <div id="createUserResponse" class="response" style="display: none;"></div>
@@ -74,11 +74,48 @@
             </div>
             <div class="form-group">
                 <label>Update Data (JSON):</label>
-                <textarea id="updateUserData" rows="4" placeholder='{"name": "Jane Doe", "email": "jane@example.com"}'></textarea>
+                <textarea id="updateUserData" rows="2" placeholder='{"name": "Jane Doe", "email": "jane@example.com"}'></textarea>
             </div>
             <button type="button" onclick="updateUser()">Update User by ID</button>
-            <button type="button" onclick="updateUserGeneral()">Update User (General)</button>
+            <button type="button" onclick="updateUserSelf()">Update User (Self)</button> <!-- was updateUserGeneral() -->
             <div id="updateUserResponse" class="response" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- Purpose Section -->
+    <div class="container">
+        <div class="section">
+            <h2>Purpose Management</h2>
+            
+            <h3>Create Purpose</h3>
+            <div class="form-group">
+                <label>Purpose Data (JSON):</label>
+                <textarea id="newPurposeData" rows="2" placeholder='{"purpose_name": "Finances", "parent_purpose_id": "OPTIONAL UUID"}'></textarea>
+            </div>
+            <button type="button" onclick="createPurpose()">Create Purpose</button>
+            <div id="createPurposeResponse" class="response" style="display: none;"></div>
+            
+            <h3>Get Purposes</h3>
+            <div class="flex-row">
+                <div class="form-group">
+                    <label>Purpose ID (optional):</label>
+                    <input type="text" id="getPurposeId" placeholder="Leave empty for all users">
+                </div>
+                <button type="button" onclick="getPurposes()">Get Purposes</button>
+            </div>
+            <div id="getPurposesResponse" class="response" style="display: none;"></div>
+            
+            <h3>Update Purpose</h3>
+            <div class="form-group">
+                <label>User ID:</label>
+                <input type="text" id="updatePurposeId" placeholder="Enter Purpose ID">
+            </div>
+            <div class="form-group">
+                <label>Update Data (JSON):</label>
+                <textarea id="updatePurposeData" rows="2" placeholder='{"purpose_name": "Admissions", "parent_purpose_id": "OPTIONAL UUID"}'></textarea>
+            </div>
+            <button type="button" onclick="updatePurpose()">Update Purpose by ID</button>
+            <div id="updatePurposeResponse" class="response" style="display: none;"></div>
         </div>
     </div>
 
@@ -90,7 +127,7 @@
             <h3>Create Visitor</h3>
             <div class="form-group">
                 <label>Visitor Data (JSON):</label>
-                <textarea id="newVisitorData" rows="4" placeholder='{"name": "Alice Smith", "purpose": "consultation", "priority": "normal"}'></textarea>
+                <textarea id="newVisitorData" rows="2" placeholder='{"name": "Alice Smith", "purpose": "consultation", "priority": "normal"}'></textarea>
             </div>
             <button type="button" onclick="createVisitor()">Create Visitor</button>
             <div id="createVisitorResponse" class="response" style="display: none;"></div>
@@ -112,7 +149,7 @@
             </div>
             <div class="form-group">
                 <label>Update Data (JSON):</label>
-                <textarea id="updateVisitorData" rows="4" placeholder='{"status": "served", "notes": "Issue resolved"}'></textarea>
+                <textarea id="updateVisitorData" rows="2" placeholder='{"status": "served", "notes": "Issue resolved"}'></textarea>
             </div>
             <button type="button" onclick="updateVisitor()">Update Visitor</button>
             <div id="updateVisitorResponse" class="response" style="display: none;"></div>

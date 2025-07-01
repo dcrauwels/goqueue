@@ -22,10 +22,20 @@ ALTER TABLE visitors
     ADD CONSTRAINT fk_purpose FOREIGN KEY (purpose_id) REFERENCES purposes(id);
 
 -- +goose Down
-DROP TABLE purposes;
+-- Drop foreign key constraint from visitors
+ALTER TABLE visitors
+    DROP CONSTRAINT fk_purpose;
 
+-- Drop self-referencing constraint from purposes
 ALTER TABLE purposes
     DROP CONSTRAINT fk_parent_purpose_id;
 
+-- Drop the purposes table
+DROP TABLE purposes;
+
+-- Reverse the visitors table changes (if you want complete rollback)
 ALTER TABLE visitors
-    DROP CONSTRAINT fk_purpose;
+    ALTER COLUMN purpose_id TYPE TEXT;
+
+ALTER TABLE visitors
+    RENAME COLUMN purpose_id TO purpose;
