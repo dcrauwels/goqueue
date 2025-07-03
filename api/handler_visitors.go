@@ -238,6 +238,7 @@ func (cfg *ApiConfig) HandlerGetVisitors(w http.ResponseWriter, r *http.Request)
 	for i, u := range visitors {
 		response[i].Populate(u)
 	}
+	jsonutils.WriteJSON(w, 200, response)
 }
 
 func (cfg *ApiConfig) HandlerGetVisitorsByID(w http.ResponseWriter, r *http.Request) { // GET /api/visitors/{visitor_id}

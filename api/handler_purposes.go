@@ -147,8 +147,8 @@ func (cfg *ApiConfig) HandlerGetPurposes(w http.ResponseWriter, r *http.Request)
 
 	// 2. write response
 	response := make([]PurposesResponseParameters, len(purposes))
-	for i, u := range response {
-		u.Populate(purposes[i])
+	for i, u := range purposes {
+		response[i].Populate(u)
 	}
 	jsonutils.WriteJSON(w, 200, response)
 }
