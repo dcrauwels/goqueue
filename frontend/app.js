@@ -113,8 +113,8 @@ function login() {
 
 function refreshTokenFunc() {
     console.log('refreshTokenFunc called');
-    makeRequest('POST', '/api/refresh', { refresh_token: refreshTokenValue }, false).then(function(response) {
-        if (response.ok && response.data.token) {
+    makeRequest('POST', '/api/refresh', { refresh_token: refreshTokenValue, user_id: userIDValue }, false).then(function(response) {
+        if (response.ok && response.data.user_access_token) {
             authToken = response.data.token;
             updateAuthStatus();
         }

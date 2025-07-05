@@ -247,6 +247,9 @@ func (cfg *ApiConfig) HandlerLogoutUser(w http.ResponseWriter, r *http.Request) 
 
 }
 
-func (cfg *ApiConfig) HandlerRevokeRefreshToken(w http.ResponseWriter, r *http.Request) {
-	// 1.
+func (cfg *ApiConfig) HandlerRevokeRefreshToken(w http.ResponseWriter, r *http.Request) { // POST /api/revoke NYI
+	// 1. Get request data (token, user)
+	// 2. validate: token matches user ID?
+	// 3. query database cfg.DB.RevokeRefreshTokenByToken
+	// 4. write response
 }
