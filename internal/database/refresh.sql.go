@@ -64,6 +64,40 @@ func (q *Queries) GetRefreshTokenByToken(ctx context.Context, token string) (Ref
 	return i, err
 }
 
+const getRefreshTokens = `-- name: GetRefreshTokens :many
+SELECT token, created_at, updated_at, user_id, expires_at, revoked_at FROM refresh_tokens
+`
+
+func (q *Queries) GetRefreshTokens(ctx context.Context) ([]RefreshToken, error) {
+	rows, err := q.db.QueryContext(ctx, getRefreshTokens)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []RefreshToken
+	for rows.Next() {
+		var i RefreshToken
+		if err := rows.Scan(
+			&i.Token,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.UserID,
+			&i.ExpiresAt,
+			&i.RevokedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getRefreshTokensByUserID = `-- name: GetRefreshTokensByUserID :one
 SELECT token, created_at, updated_at, user_id, expires_at, revoked_at FROM refresh_tokens
 WHERE user_id = $1 AND expires_at > NOW() AND revoked_at IS NOT NULL

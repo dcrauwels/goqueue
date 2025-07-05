@@ -48,6 +48,7 @@ func main() {
 	//mux.HandleFunc("DELETE /api/users", apiCfg.HandlerDeleteUsers) NYI do I even want this
 	//handler_auth.go
 	mux.HandleFunc("POST /api/login", apiCfg.HandlerLoginUser)
+	mux.HandleFunc("GET /api/refresh", apiCfg.HandlerGetRefreshTokens)
 	mux.HandleFunc("POST /api/refresh", apiCfg.HandlerRefreshUser)
 	mux.HandleFunc("POST /api/logout", apiCfg.HandlerLogoutUser)
 	//handler_visitors.go

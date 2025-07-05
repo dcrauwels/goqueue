@@ -104,7 +104,7 @@ function login() {
                 refreshTokenValue = response.data.user_refresh_token;
             }
             updateAuthStatus();
-            setCookie('accessToken', authToken, 7)
+            setCookie('accessToken', authToken, 1)
         }
         
         displayResponse('loginResponse', response);
@@ -314,12 +314,12 @@ document.addEventListener('DOMContentLoaded', function() {
 // cookie handling
 
 // distribute cookie
-function setCookie(name, value, days) {
+function setCookie(name, value, hours) {
     console.log('setCookie called')
     let expires = '';
     if (days) {
         const date = new Date();
-        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+        date.setTime(date.getTime() + (hours * 60 * 60 * 1000));
         expires = '; expires=' + date.toUTCString();
     }
     document.cookie = name + '=' + (value || '') + expires + '; path=/; SameSite=Lax';

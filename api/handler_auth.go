@@ -3,6 +3,7 @@ package api
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -23,6 +24,46 @@ type responseParameters struct {
 	UserRefreshToken string    `json:"user_refresh_token"`
 }
 
+type refreshTokenResponseParams struct {
+	Token     string       `json:"token"`
+	CreatedAt time.Time    `json:"created_at"`
+	UpdatedAt time.Time    `json:"updated_at"`
+	UserID    uuid.UUID    `json:"user_id"`
+	ExpiresAt time.Time    `json:"expires_at"`
+	RevokedAt sql.NullTime `json:"revoked_at"`
+}
+
+func (cfg *ApiConfig) HandlerGetRefreshTokens(w http.ResponseWriter, r *http.Request) { // GET /api/refresh
+	// 1. authenticate: only dev environment
+	if cfg.Env != "dev" {
+		jsonutils.WriteError(w, 405, fmt.Errorf("user tried to access GET /api/refresh from incorrect environment"), "GET not allowed for this endpoint")
+		return
+	}
+
+	// 2. run query
+	refreshTokens, err := cfg.DB.GetRefreshTokens(r.Context())
+	if err == sql.ErrNoRows {
+		jsonutils.WriteError(w, 404, err, "no rows found when querying database (GetRefreshTokens in HandlerGetRefreshTokens)")
+		return
+	} else if err != nil {
+		jsonutils.WriteError(w, 500, err, "error querying database (GetRefreshRokens in HandlerGetRefreshTokens)")
+		return
+	}
+
+	// 3. write response
+	response := make([]refreshTokenResponseParams, len(refreshTokens))
+	for i, u := range refreshTokens {
+		response[i].Token = u.Token
+		response[i].CreatedAt = u.CreatedAt
+		response[i].UpdatedAt = u.UpdatedAt
+		response[i].UserID = u.UserID
+		response[i].ExpiresAt = u.ExpiresAt
+		response[i].RevokedAt = u.RevokedAt
+	}
+	jsonutils.WriteJSON(w, 200, response)
+
+}
+
 func (cfg *ApiConfig) HandlerLoginUser(w http.ResponseWriter, r *http.Request) {
 	// for authenticating USERS, not VISITORS
 	// 1. get request content (email: string, password: string)
@@ -40,7 +81,7 @@ func (cfg *ApiConfig) HandlerLoginUser(w http.ResponseWriter, r *http.Request) {
 		jsonutils.WriteError(w, 404, err, "email or password incorrect")
 		return
 	} else if err != nil {
-		jsonutils.WriteError(w, 500, err, "error querying database")
+		jsonutils.WriteError(w, 500, err, "error querying database (GetUserByEmail in HandlerLoginUser)")
 		return
 	}
 	err = auth.CheckPasswordHash(user.HashedPassword, reqParams.Password)
@@ -54,21 +95,23 @@ func (cfg *ApiConfig) HandlerLoginUser(w http.ResponseWriter, r *http.Request) {
 		jsonutils.WriteError(w, 403, err, "user already logged in, use /api/refresh endpoint instead")
 		return
 	} else if err != sql.ErrNoRows {
-		jsonutils.WriteError(w, 500, err, "error querying database")
+		jsonutils.WriteError(w, 500, err, "error querying database (GetRefreshTokensByUserID in HandlerLoginUser)")
 		return
+	} else if err == sql.ErrNoRows {
+		fmt.Printf("error: no rows found through GetRefreshTokenByUserID: %w when querying with user ID %s", err, user.ID.String())
 	}
 
 	// 3. generate access token
 	userAccessToken, err := auth.MakeJWT(user.ID, "user", cfg.Secret, 60)
 	if err != nil {
-		jsonutils.WriteError(w, 500, err, "error creating access token")
+		jsonutils.WriteError(w, 500, err, "error creating access token (in HandlerLoginUser)")
 		return
 	}
 
 	// 4. query for refresh token
 	newRefreshToken, err := auth.MakeRefreshToken()
 	if err != nil {
-		jsonutils.WriteError(w, 500, err, "error creating refresh token")
+		jsonutils.WriteError(w, 500, err, "error creating refresh token (in HandlerLoginUser)")
 		return
 	}
 	queryParams := database.CreateRefreshTokenParams{
@@ -78,7 +121,7 @@ func (cfg *ApiConfig) HandlerLoginUser(w http.ResponseWriter, r *http.Request) {
 	}
 	_, err = cfg.DB.CreateRefreshToken(r.Context(), queryParams)
 	if err != nil {
-		jsonutils.WriteError(w, 500, err, "error querying database")
+		jsonutils.WriteError(w, 500, err, "error querying database (CreateRefreshToken in HandlerLoginUser)")
 		return
 	}
 
