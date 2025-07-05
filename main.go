@@ -49,6 +49,7 @@ func main() {
 	//handler_auth.go
 	mux.HandleFunc("POST /api/login", apiCfg.HandlerLoginUser)
 	mux.HandleFunc("GET /api/refresh", apiCfg.HandlerGetRefreshTokens)
+	mux.HandleFunc("GET /api/refresh/{user_id}", apiCfg.HandlerGetRefreshTokensByUserID)
 	mux.HandleFunc("POST /api/refresh", apiCfg.HandlerRefreshUser)
 	mux.HandleFunc("POST /api/logout", apiCfg.HandlerLogoutUser)
 	//handler_visitors.go

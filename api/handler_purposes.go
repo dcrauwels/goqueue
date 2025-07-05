@@ -13,14 +13,9 @@ import (
 	"github.com/google/uuid"
 )
 
-type PurposesPostRequestParameters struct {
+type PurposesRequestParameters struct {
 	PurposeName     string        `json:"purpose_name"`
 	ParentPurposeID uuid.NullUUID `json:"parent_purpose_id"`
-}
-
-type PurposesPutRequestParameters struct {
-	ID uuid.UUID `json:"id"`
-	PurposesPostRequestParameters
 }
 
 type PurposesResponseParameters struct {
@@ -96,7 +91,7 @@ func (cfg *ApiConfig) handlePurposeOperation(
 
 // POST /api/purposes (admin only)
 func (cfg *ApiConfig) HandlerPostPurposes(w http.ResponseWriter, r *http.Request) {
-	var request PurposesPostRequestParameters
+	var request PurposesRequestParameters
 
 	cfg.handlePurposeOperation(w, r, "POST",
 		&request,
@@ -111,9 +106,17 @@ func (cfg *ApiConfig) HandlerPostPurposes(w http.ResponseWriter, r *http.Request
 	)
 }
 
-// POST /api/purposes (admin only)
+// PUT /api/purposes/{purpose_id} (admin only)
 func (cfg *ApiConfig) HandlerPutPurposesByID(w http.ResponseWriter, r *http.Request) {
-	var request PurposesPutRequestParameters
+	var request PurposesRequestParameters
+
+	// retrieve request ID
+	req := r.PathValue("user_id")
+	purposeID, err := uuid.Parse(req)
+	if err != nil {
+		jsonutils.WriteError(w, 400, err, "endpoint is not a valid user ID")
+		return
+	}
 
 	cfg.handlePurposeOperation(w, r, "PUT",
 		// Decoder function
@@ -124,7 +127,7 @@ func (cfg *ApiConfig) HandlerPutPurposesByID(w http.ResponseWriter, r *http.Requ
 		// Database operation function
 		func() (database.Purpose, error) {
 			queryParams := database.SetPurposeParams{
-				ID:              request.ID,
+				ID:              purposeID,
 				PurposeName:     request.PurposeName,
 				ParentPurposeID: request.ParentPurposeID,
 			}
