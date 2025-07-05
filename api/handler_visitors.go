@@ -163,7 +163,7 @@ func (cfg *ApiConfig) HandlerGetVisitors(w http.ResponseWriter, r *http.Request)
 
 	var visitors []database.Visitor
 
-	// 2. check for query parameters
+	// 2. check for query parameters (purpose, status)
 	queryParameters := r.URL.Query()
 	queryPurpose := queryParameters.Get("purpose")
 	queryStatus := queryParameters.Get("status")

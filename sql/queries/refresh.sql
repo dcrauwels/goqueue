@@ -17,9 +17,9 @@ SELECT * FROM refresh_tokens;
 SELECT * FROM refresh_tokens
 WHERE token = $1;
 
--- name: GetRefreshTokensByUserID :one
+-- name: GetRefreshTokensByUserID :many
 SELECT * FROM refresh_tokens
-WHERE user_id = $1 AND expires_at > NOW() AND revoked_at IS NOT NULL;
+WHERE user_id = $1 AND expires_at > NOW() AND revoked_at IS NULL;
 
 -- name: RevokeRefreshTokenByToken :one
 UPDATE refresh_tokens

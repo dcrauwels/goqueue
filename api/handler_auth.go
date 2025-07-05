@@ -40,9 +40,25 @@ func (cfg *ApiConfig) HandlerGetRefreshTokens(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	// 2. run query
-	refreshTokens, err := cfg.DB.GetRefreshTokens(r.Context())
-	if err == sql.ErrNoRows {
+	// 2. get query parameters (user)
+	queryParameters := r.URL.Query()
+	queryUser := queryParameters.Get("user")
+
+	// 3. run query
+	var refreshTokens []database.RefreshToken
+	var err error
+	if queryUser != "" {
+		userID, err := uuid.Parse(queryUser)
+		if err != nil {
+			jsonutils.WriteError(w, 400, err, "query parameter (?user=) is not a valid user ID")
+			return
+		}
+		refreshTokens, err = cfg.DB.GetRefreshTokensByUserID(r.Context(), userID) // note that this returns an empty slice, not a sql.ErrNoRows error in case no rows are found!
+	} else {
+		refreshTokens, err = cfg.DB.GetRefreshTokens(r.Context())
+	}
+
+	if err == sql.ErrNoRows || len(refreshTokens) == 0 {
 		jsonutils.WriteError(w, 404, err, "no rows found when querying database (GetRefreshTokens in HandlerGetRefreshTokens)")
 		return
 	} else if err != nil {
@@ -61,7 +77,6 @@ func (cfg *ApiConfig) HandlerGetRefreshTokens(w http.ResponseWriter, r *http.Req
 		response[i].RevokedAt = u.RevokedAt
 	}
 	jsonutils.WriteJSON(w, 200, response)
-
 }
 
 func (cfg *ApiConfig) HandlerLoginUser(w http.ResponseWriter, r *http.Request) {
@@ -230,4 +245,8 @@ func (cfg *ApiConfig) HandlerLogoutUser(w http.ResponseWriter, r *http.Request) 
 	}
 	jsonutils.WriteJSON(w, 200, respParams)
 
+}
+
+func (cfg *ApiConfig) HandlerRevokeRefreshToken(w http.ResponseWriter, r *http.Request) {
+	// 1.
 }
