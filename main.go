@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/dcrauwels/goqueue/admin"
@@ -27,10 +28,16 @@ func main() {
 	dbQueries := database.New(db)
 
 	// set up ApiConfig
+	accessTokenDuration, err := strconv.Atoi(os.Getenv("ACCESSTOKENDURATION"))
+	if err != nil {
+		log.Printf("Environment variable ACCESSTOKENDURATION not provided: %w", err)
+		panic(err)
+	}
 	apiCfg := api.ApiConfig{
-		DB:     dbQueries,
-		Secret: os.Getenv("SECRET"),
-		Env:    os.Getenv("ENV"),
+		DB:                  dbQueries,
+		Secret:              os.Getenv("SECRET"),
+		Env:                 os.Getenv("ENV"),
+		AccessTokenDuration: accessTokenDuration,
 	}
 
 	// servemux

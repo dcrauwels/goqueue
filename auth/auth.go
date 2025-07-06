@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/dcrauwels/goqueue/internal/database"
 	"github.com/dcrauwels/goqueue/jsonutils"
@@ -85,4 +86,29 @@ func VisitorsByID(w http.ResponseWriter, r *http.Request, cfg configReader, db d
 	}
 
 	return visitorID, nil
+}
+
+func setAuthCookies(w http.ResponseWriter, accessToken, refreshToken string, userID uuid.UUID) {
+	// Access Token Cookie
+	http.SetCookie(w, &http.Cookie{
+		Name:     "access_token",
+		Value:    accessToken,
+		Path:     "/",
+		Expires:  time.Now().Add(60 * time.Minute), // currently set to 1 hour but refer to api.handlerloginuser and api.handlerrefreshuser in handler_auth.go
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	// Refresh Token Cookie
+	http.SetCookie(w, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    refreshToken,
+		Path:     "/api/refresh",
+		Expires:  time.Now().Add(1 * 24 * time.Hour),
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+	})
+
 }
