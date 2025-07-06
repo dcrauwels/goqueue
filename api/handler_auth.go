@@ -186,6 +186,8 @@ func (cfg *ApiConfig) HandlerRefreshUser(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	// 2.5 rotate refresh token (revoke old token, return new token) NYI
+
 	// 3. generate access token
 	userAccessToken, err := auth.MakeJWT(reqParams.UserID, "user", cfg.Secret, 60)
 	if err != nil {
