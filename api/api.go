@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"net/http"
+	"time"
 
 	"github.com/dcrauwels/goqueue/auth"
 	"github.com/dcrauwels/goqueue/internal/database"
@@ -70,10 +71,39 @@ func (cfg *ApiConfig) AuthMiddleware(next http.Handler) http.Handler {
 					}
 					rotatedRefreshToken, err := cfg.DB.CreateRefreshToken(r.Context())
 
+					// 2. Set new cookies
+					http.SetCookie(w, &http.Cookie{
+						Name: "access_token",
+						Value: newAccessToken,
+						Path: "/",
+						Expires: time.Now().Add(cfg.AccessTokenDuration * time.Minute),
+						HttpOnly: true,
+						Secure: true,
+						SameSite: http.SameSiteLaxMode,
+					})
+					http.SetCookie(w, &http.Cookie{
+						Name: "refresh_token",
+						Value: rotatedRefreshToken.Token,
+						Path:"/api/refresh",
+						Expires: time.Now.Add(7*24*time.Hour),
+						HttpOnly: true,
+						Secure: true
+						SameSite: http.SameSiteStrictMode,
+					})
+					// 3. Redirect?
+					http.Redirect(w, r, r.URL.Path, http.StatusSeeOther)
+					return
 				}
-
 			}
 		}
+		//4. if accessErr == nil ... so we can deal with a functioning access token
+		userID, userType, err := auth.ValidateJWT(accessTokenCookie.Value, cfg.GetSecret())
+		if err != nil {
+			jsonutils.WriteError(w, 401, err, "invalid or expired access token in cookie")
+			http.Redirect(w, r, "/login", 401)
+			return
+		}
+
 
 	})
 }
