@@ -3,6 +3,7 @@ package api
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"time"
 
@@ -47,22 +48,26 @@ func (urp *UsersResponseParameters) Populate(u database.User) {
 }
 
 func ProcessUsersParameters(w http.ResponseWriter, request UsersRequestParameters) (string, error) {
-	// check request for validity
+	/*
+		This function checks if the parameters in request (email, password and full name) are valid for use in an INSERT query to the users table.
+		Returns a hashed password (using auth.HashPassword) and an error. If the function fails, an empty string is returned instead.
+	*/
+
 	//email valid
 	if err := strutils.ValidateEmail(request.Email); err != nil {
-		jsonutils.WriteError(w, 400, err, "password formatting invalid: please use jdoe@provider.tld")
+		jsonutils.WriteError(w, http.StatusBadRequest, err, "password formatting invalid: please use jdoe@provider.tld")
 		return "", err
 	}
 	//password valid (aA0)
 	if err := strutils.ValidatePassword(request.Password); err != nil {
-		jsonutils.WriteError(w, 400, err, "password formatting invalid: please use lowercase, uppercase and/or numeric, between 8 and 30 characters.")
+		jsonutils.WriteError(w, http.StatusBadRequest, err, "password formatting invalid: please use lowercase, uppercase and/or numeric, between 8 and 30 characters.")
 		return "", err
 	}
 
 	// hash password
 	hashedPassword, err := auth.HashPassword(request.Password)
 	if err != nil {
-		jsonutils.WriteError(w, 500, err, "password could not be hashed.")
+		jsonutils.WriteError(w, http.StatusInternalServerError, err, "password could not be hashed.")
 		return "", err
 	}
 
@@ -72,9 +77,11 @@ func ProcessUsersParameters(w http.ResponseWriter, request UsersRequestParameter
 func (cfg *ApiConfig) HandlerPostUsers(w http.ResponseWriter, r *http.Request) { // POST /api/users
 	// function to CREATE new user
 	// check for admin status in accessing user
-	userIsAdmin, err := auth.IsAdminFromHeader(w, r, cfg, cfg.DB)
-	if err != nil || !userIsAdmin {
-		// already used jsonutils.WriteError in the auth.IsAdminFromHeader function. No need to repeat here
+	accessingUser, err := auth.UserFromContext(w, r, cfg.DB)
+	if err != nil {
+		return
+	} else if !accessingUser.IsAdmin {
+		jsonutils.WriteError(w, http.StatusUnauthorized, ErrNotAdmin, "non-admin user tried to request POST /api/users")
 		return
 	}
 
@@ -83,7 +90,7 @@ func (cfg *ApiConfig) HandlerPostUsers(w http.ResponseWriter, r *http.Request) {
 	reqParams := UsersRequestParameters{}
 	err = decoder.Decode(&reqParams)
 	if err != nil {
-		jsonutils.WriteError(w, 400, err, "JSON formatting invalid")
+		jsonutils.WriteError(w, http.StatusBadRequest, err, "JSON formatting invalid")
 		return
 	}
 
@@ -100,7 +107,7 @@ func (cfg *ApiConfig) HandlerPostUsers(w http.ResponseWriter, r *http.Request) {
 	}
 	createdUser, err := cfg.DB.CreateUser(r.Context(), queryParams)
 	if err != nil {
-		jsonutils.WriteError(w, 500, err, "could not query database to create user.")
+		jsonutils.WriteError(w, http.StatusInternalServerError, err, "could not query database to create user.")
 		return
 	}
 
@@ -108,18 +115,20 @@ func (cfg *ApiConfig) HandlerPostUsers(w http.ResponseWriter, r *http.Request) {
 	response := UsersResponseParameters{}
 	response.Populate(createdUser)
 
-	jsonutils.WriteJSON(w, 201, response)
+	jsonutils.WriteJSON(w, http.StatusCreated, response)
 
 }
 
 func (cfg *ApiConfig) HandlerPutUsers(w http.ResponseWriter, r *http.Request) { // PUT /api/users
-	// function to change own details for user. Only things a user can change about himself are email, password and fullname
-	// NYI: fullname editing
+	/*
+		Function to change own details for user. Only things a user can change about himself are email, password and fullname
+		Currently the way this is set up is that a user changes himself. But perhaps it would be better to only keep the PUT /api/users/{user_id} setup and
+		remove this endpoint.
+	*/
 
-	// 1. get accessing user from header
-	accessingUser, err := auth.UserFromHeader(w, r, cfg, cfg.DB)
+	// 1. get accessing user from context
+	accessingUser, err := auth.UserFromContext(w, r, cfg.DB)
 	if err != nil {
-		// already used jsonutils.WriteError in the auth.UserFromHeader function. No need to repeat here
 		return
 	}
 
@@ -128,7 +137,7 @@ func (cfg *ApiConfig) HandlerPutUsers(w http.ResponseWriter, r *http.Request) { 
 	reqParams := UsersRequestParameters{}
 	err = decoder.Decode(&reqParams)
 	if err != nil {
-		jsonutils.WriteError(w, 400, err, "JSON formatting invalid")
+		jsonutils.WriteError(w, http.StatusBadRequest, err, "JSON formatting invalid")
 		return
 	}
 
@@ -145,18 +154,18 @@ func (cfg *ApiConfig) HandlerPutUsers(w http.ResponseWriter, r *http.Request) { 
 		HashedPassword: hashedPassword,
 	}
 	updatedUser, err := cfg.DB.SetUserEmailPasswordByID(r.Context(), queryParams)
-	if err == sql.ErrNoRows {
-		jsonutils.WriteError(w, 403, err, "user does not exist. How did you do this?")
+	if errors.Is(err, sql.ErrNoRows) {
+		jsonutils.WriteError(w, http.StatusForbidden, err, "user does not exist. How did you do this?")
 		return
 	} else if err != nil {
-		jsonutils.WriteError(w, 500, err, "error querying database")
+		jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database")
 		return
 	}
 
 	// 5. write response
 	response := UsersResponseParameters{}
 	response.Populate(updatedUser)
-	jsonutils.WriteJSON(w, 200, response)
+	jsonutils.WriteJSON(w, http.StatusOK, response)
 
 }
 
@@ -164,12 +173,9 @@ func (cfg *ApiConfig) HandlerPutUsersByID(w http.ResponseWriter, r *http.Request
 	// function to UPDATE specific user by ID
 	// requires isadmin status from accessing user
 
-	// 1. check if accessing user is admin
-	isAdmin, err := auth.IsAdminFromHeader(w, r, cfg, cfg.DB)
+	// 1. retrieve accessing user
+	accessingUser, err := auth.UserFromContext(w, r, cfg.DB)
 	if err != nil {
-		return
-	} else if !isAdmin {
-		jsonutils.WriteError(w, 403, err, "PUT /api/users/{user_id} is only accessible to admin level users")
 		return
 	}
 
@@ -177,7 +183,7 @@ func (cfg *ApiConfig) HandlerPutUsersByID(w http.ResponseWriter, r *http.Request
 	req := r.PathValue("user_id")
 	userID, err := uuid.Parse(req)
 	if err != nil {
-		jsonutils.WriteError(w, 400, err, "endpoint is not a valid user ID")
+		jsonutils.WriteError(w, http.StatusBadRequest, err, "endpoint is not a valid user ID")
 		return
 	}
 
@@ -186,11 +192,22 @@ func (cfg *ApiConfig) HandlerPutUsersByID(w http.ResponseWriter, r *http.Request
 	decoder := json.NewDecoder(r.Body)
 	err = decoder.Decode(&request)
 	if err != nil {
-		jsonutils.WriteError(w, 400, err, "invalid json request structure")
+		jsonutils.WriteError(w, http.StatusBadRequest, err, "invalid json request structure")
 		return
 	}
 
-	// 4. run query
+	// 4. auth: either IsAdmin or userID match
+	if !accessingUser.IsAdmin {
+		if accessingUser.ID != userID {
+			jsonutils.WriteError(w, http.StatusForbidden, errors.New("user not authorized to send a PUT request to this endpoint"), "this user account is not authorized to send a PUT request to this endpoint")
+			return
+		} else if request.IsAdmin != accessingUser.IsAdmin || request.IsActive != accessingUser.IsActive { // non-admins cannot set themselves to admin obviously or deactivate themselves
+			jsonutils.WriteError(w, http.StatusForbidden, errors.New("user not authorized to edit these fields on own account"), "this user account cannot edit their own admin or activity status")
+			return
+		}
+	}
+
+	// 5. run query
 	queryParams := database.SetUserByIDParams{
 		ID:       userID,
 		Email:    request.Email,
@@ -199,18 +216,18 @@ func (cfg *ApiConfig) HandlerPutUsersByID(w http.ResponseWriter, r *http.Request
 		IsActive: request.IsActive,
 	}
 	updatedUser, err := cfg.DB.SetUserByID(r.Context(), queryParams)
-	if err == sql.ErrNoRows {
-		jsonutils.WriteError(w, 404, err, "user not found")
+	if errors.Is(err, sql.ErrNoRows) {
+		jsonutils.WriteError(w, http.StatusNotFound, err, "user not found")
 		return
 	} else if err != nil {
-		jsonutils.WriteError(w, 500, err, "error querying database")
+		jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database")
 		return
 	}
 
 	// 5. write response
 	response := UsersResponseParameters{}
 	response.Populate(updatedUser)
-	jsonutils.WriteJSON(w, 200, response)
+	jsonutils.WriteJSON(w, http.StatusOK, response)
 }
 
 func (cfg *ApiConfig) HandlerGetUsers(w http.ResponseWriter, r *http.Request) { // GET /api/users
@@ -218,55 +235,61 @@ func (cfg *ApiConfig) HandlerGetUsers(w http.ResponseWriter, r *http.Request) { 
 	// requires isadmin status from accessing user
 
 	// 1. check if accessing user is admin
-	isAdmin, err := auth.IsAdminFromHeader(w, r, cfg, cfg.DB)
+	accessingUser, err := auth.UserFromContext(w, r, cfg.DB)
 	if err != nil {
-		// auth.UserFromHeader() already calls jsonutils.WriteError()
 		return
-	} else if !isAdmin {
-		jsonutils.WriteError(w, 403, err, "GET /api/users is only accessible to admin level users")
+	} else if !accessingUser.IsAdmin {
+		jsonutils.WriteError(w, http.StatusForbidden, err, "GET /api/users is only accessible to admin level users")
 		return
 	}
+
 	// 2. run query
 	users, err := cfg.DB.GetUsers(r.Context())
-	if err == sql.ErrNoRows {
-		jsonutils.WriteError(w, 404, err, "no users found")
+	if errors.Is(err, sql.ErrNoRows) {
+		jsonutils.WriteError(w, http.StatusNotFound, err, "no users found")
 		return
 	} else if err != nil {
-		jsonutils.WriteError(w, 500, err, "error querying database")
+		jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database")
 		return
 	}
+
 	// 3. write response
 	response := make([]UsersResponseParameters, len(users))
 	for i, u := range users {
 		response[i].Populate(u)
 	}
-	jsonutils.WriteJSON(w, 200, response)
+	jsonutils.WriteJSON(w, http.StatusOK, response)
 }
 
 func (cfg *ApiConfig) HandlerGetUsersByID(w http.ResponseWriter, r *http.Request) { // GET /api/users/{user_id}
+	/*
+		Handler function to retrieve a full user (including is_admin) based on the UUID. This needs to be accessible to all clients, even unauthenticated
+		ones, because a visitor needs to be able to see who is calling him. I might decide to change this at a later date though.
+	*/
+
 	// 1. get user ID from request uri
 	req := r.PathValue("user_id")
 
 	// 2. check for validity
 	userID, err := uuid.Parse(req)
 	if err != nil {
-		jsonutils.WriteError(w, 400, err, "endpoint is not a valid user ID")
+		jsonutils.WriteError(w, http.StatusBadRequest, err, "endpoint is not a valid user ID")
 		return
 	}
 
 	// 3. run query
 	user, err := cfg.GetUserByID(r.Context(), userID)
-	if err == sql.ErrNoRows {
-		jsonutils.WriteError(w, 404, err, "user not found")
+	if errors.Is(err, sql.ErrNoRows) {
+		jsonutils.WriteError(w, http.StatusNotFound, err, "user not found")
 		return
 	} else if err != nil {
-		jsonutils.WriteError(w, 500, err, "error querying database")
+		jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database")
 		return
 	}
 	// 4. write response
 	response := UsersResponseParameters{}
 	response.Populate(user)
-	jsonutils.WriteJSON(w, 200, response)
+	jsonutils.WriteJSON(w, http.StatusOK, response)
 }
 
 // not entirely sure how I want to go about this function yet
@@ -285,7 +308,7 @@ func (cfg *ApiConfig) HandlerGetUsersByID(w http.ResponseWriter, r *http.Request
 	decoder := json.NewDecoder(r.Body)
 	err = decoder.Decode(&reqParams)
 	if err != nil {
-		jsonutils.WriteError(w, 400, err, "incorrect json request provided")
+		jsonutils.WriteError(w, http.StatusBadRequest, err, "incorrect json request provided")
 	}
 
 	// 3. run query DeleteUserByID

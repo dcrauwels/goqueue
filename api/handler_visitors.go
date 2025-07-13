@@ -59,17 +59,17 @@ func (cfg *ApiConfig) HandlerPostVisitors(w http.ResponseWriter, r *http.Request
 	request := VisitorsPostRequestParameters{}
 	err := decoder.Decode(&request)
 	if err != nil {
-		jsonutils.WriteError(w, 400, err, "JSON formatting invalid")
+		jsonutils.WriteError(w, http.StatusBadRequest, err, "JSON formatting invalid")
 		return
 	}
 
 	// 2. check purpose for validity
 	purpose, err := cfg.DB.GetPurposesByID(r.Context(), request.PurposeID)
 	if err == sql.ErrNoRows {
-		jsonutils.WriteError(w, 404, err, "purpose not found in database, please register first")
+		jsonutils.WriteError(w, http.StatusNotFound, err, "purpose not found in database, please register first")
 		return
 	} else if err != nil {
-		jsonutils.WriteError(w, 500, err, "error querying database (GetPurposesByName)")
+		jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (GetPurposesByName)")
 		return
 	}
 
@@ -80,14 +80,14 @@ func (cfg *ApiConfig) HandlerPostVisitors(w http.ResponseWriter, r *http.Request
 	}
 	createdVisitor, err := cfg.DB.CreateVisitor(r.Context(), queryParams)
 	if err != nil {
-		jsonutils.WriteError(w, 500, err, "could not query database to create visitor")
+		jsonutils.WriteError(w, http.StatusInternalServerError, err, "could not query database to create visitor")
 		return
 	}
 
 	// 4. make visitor access token
 	visitorAccessToken, err := auth.MakeJWT(createdVisitor.ID, "visitor", cfg.Secret, 120)
 	if err != nil {
-		jsonutils.WriteError(w, 500, err, "could not create access token")
+		jsonutils.WriteError(w, http.StatusInternalServerError, err, "could not create access token")
 		return
 	}
 
@@ -95,7 +95,7 @@ func (cfg *ApiConfig) HandlerPostVisitors(w http.ResponseWriter, r *http.Request
 	response := VisitorsPOSTResponseParameters{}
 	response.Populate(createdVisitor)
 	response.VisitorAccessToken = visitorAccessToken
-	jsonutils.WriteJSON(w, 201, response)
+	jsonutils.WriteJSON(w, http.StatusCreated, response)
 }
 
 func (cfg *ApiConfig) HandlerPutVisitorsByID(w http.ResponseWriter, r *http.Request) { // PUT /api/visitors/{visitor_id}
@@ -110,17 +110,17 @@ func (cfg *ApiConfig) HandlerPutVisitorsByID(w http.ResponseWriter, r *http.Requ
 	request := VisitorsPutRequestParameters{}
 	err = decoder.Decode(&request)
 	if err != nil {
-		jsonutils.WriteError(w, 400, err, "JSON formatting invalid")
+		jsonutils.WriteError(w, http.StatusBadRequest, err, "JSON formatting invalid")
 		return
 	}
 
 	// 3. validate request? Purpose mainly.
 	_, err = cfg.DB.GetPurposesByID(r.Context(), request.PurposeID)
 	if err == sql.ErrNoRows {
-		jsonutils.WriteError(w, 404, err, "purpose not found in database")
+		jsonutils.WriteError(w, http.StatusNotFound, err, "purpose not found in database")
 		return
 	} else if err != nil {
-		jsonutils.WriteError(w, 500, err, "error querying database (GetPurposesById)")
+		jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (GetPurposesById)")
 		return
 	}
 
@@ -133,10 +133,10 @@ func (cfg *ApiConfig) HandlerPutVisitorsByID(w http.ResponseWriter, r *http.Requ
 	}
 	updatedVisitor, err := cfg.DB.SetVisitorByID(r.Context(), queryParams)
 	if err == sql.ErrNoRows {
-		jsonutils.WriteError(w, 404, err, "updated visitor does not exist in database")
+		jsonutils.WriteError(w, http.StatusNotFound, err, "updated visitor does not exist in database")
 		return
 	} else if err != nil {
-		jsonutils.WriteError(w, 500, err, "error querying database (SetVisitorByID)")
+		jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (SetVisitorByID)")
 		return
 	}
 
@@ -144,7 +144,7 @@ func (cfg *ApiConfig) HandlerPutVisitorsByID(w http.ResponseWriter, r *http.Requ
 	response := VisitorsResponseParameters{}
 	response.Populate(updatedVisitor)
 
-	jsonutils.WriteJSON(w, 200, response)
+	jsonutils.WriteJSON(w, http.StatusOK, response)
 
 }
 
@@ -152,12 +152,12 @@ func (cfg *ApiConfig) HandlerGetVisitors(w http.ResponseWriter, r *http.Request)
 	// 1. read request: JWT
 	accessingUser, err := auth.UserFromHeader(w, r, cfg, cfg.DB)
 	if err == auth.ErrWrongUserType {
-		jsonutils.WriteError(w, 403, err, "not logged in as user") // this is auth
+		jsonutils.WriteError(w, http.StatusForbidden, err, "not logged in as user") // this is auth
 		return
 	} else if err != nil {
 		return // auth.UserFromHeader() already calls jsonutils.WriteError() if something is wrong or the usertype isnt "user"
 	} else if !accessingUser.IsActive {
-		jsonutils.WriteError(w, 403, err, "logged in user is not active") // when would this even happen?
+		jsonutils.WriteError(w, http.StatusForbidden, err, "logged in user is not active") // when would this even happen?
 		return
 	}
 
@@ -171,7 +171,7 @@ func (cfg *ApiConfig) HandlerGetVisitors(w http.ResponseWriter, r *http.Request)
 	// 2.1 status as string to status as int32
 	status64, err := strconv.ParseInt(queryStatus, 10, 32)
 	if err != nil {
-		jsonutils.WriteError(w, 400, err, "query parameter 'status' only takes integer values")
+		jsonutils.WriteError(w, http.StatusBadRequest, err, "query parameter 'status' only takes integer values")
 		return
 	}
 	status := int32(status64) // cast as int32 as the SQL query parameter structs take this
@@ -179,10 +179,10 @@ func (cfg *ApiConfig) HandlerGetVisitors(w http.ResponseWriter, r *http.Request)
 	// 2.2 purpose name to purpose ID
 	purpose, err := cfg.DB.GetPurposesByName(r.Context(), queryPurpose)
 	if err == sql.ErrNoRows && queryPurpose != "" { // of course norows is not a problem if querypurpose is empty to begin with
-		jsonutils.WriteError(w, 404, err, "purpose not found in database")
+		jsonutils.WriteError(w, http.StatusNotFound, err, "purpose not found in database")
 		return
 	} else if err != nil {
-		jsonutils.WriteError(w, 500, err, "error querying database (GetPurposesByName)")
+		jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (GetPurposesByName)")
 		return
 	}
 
@@ -195,40 +195,40 @@ func (cfg *ApiConfig) HandlerGetVisitors(w http.ResponseWriter, r *http.Request)
 		}
 		visitors, err = cfg.DB.GetVisitorsByPurposeStatus(r.Context(), queryParams)
 		if err == sql.ErrNoRows {
-			jsonutils.WriteError(w, 404, err, "no visitors found in database for purpose "+queryPurpose+" and status "+queryStatus)
+			jsonutils.WriteError(w, http.StatusNotFound, err, "no visitors found in database for purpose "+queryPurpose+" and status "+queryStatus)
 			return
 		} else if err != nil {
-			jsonutils.WriteError(w, 500, err, "error querying database (GetVisitorsByPurposeStatus)")
+			jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (GetVisitorsByPurposeStatus)")
 			return
 		}
 
 	case queryPurpose != "" && queryStatus == "": // only purpose query parameter entered
 		visitors, err = cfg.DB.GetVisitorsByPurpose(r.Context(), purpose.ID)
 		if err == sql.ErrNoRows {
-			jsonutils.WriteError(w, 404, err, "no visitors found in databae for purpose "+queryPurpose)
+			jsonutils.WriteError(w, http.StatusNotFound, err, "no visitors found in databae for purpose "+queryPurpose)
 			return
 		} else if err != nil {
-			jsonutils.WriteError(w, 500, err, "error querying database (GetVisitorsByPurpose)")
+			jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (GetVisitorsByPurpose)")
 			return
 		}
 
 	case queryPurpose == "" && queryStatus != "": // only status query parameter entered
 		visitors, err = cfg.DB.GetVisitorsByStatus(r.Context(), status)
 		if err == sql.ErrNoRows {
-			jsonutils.WriteError(w, 404, err, "no viistors found in databae for status "+queryStatus)
+			jsonutils.WriteError(w, http.StatusNotFound, err, "no viistors found in databae for status "+queryStatus)
 			return
 		} else if err != nil {
-			jsonutils.WriteError(w, 500, err, "error querying database (GetVisitorsByStatus)")
+			jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (GetVisitorsByStatus)")
 			return
 		}
 
 	case queryPurpose == "" && queryStatus == "": // neither query parameter entered
 		visitors, err = cfg.DB.GetVisitors(r.Context())
 		if err == sql.ErrNoRows {
-			jsonutils.WriteError(w, 404, err, "no visitors found in database")
+			jsonutils.WriteError(w, http.StatusNotFound, err, "no visitors found in database")
 			return
 		} else if err != nil {
-			jsonutils.WriteError(w, 500, err, "error querying database")
+			jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database")
 			return
 		}
 	}
@@ -238,7 +238,7 @@ func (cfg *ApiConfig) HandlerGetVisitors(w http.ResponseWriter, r *http.Request)
 	for i, u := range visitors {
 		response[i].Populate(u)
 	}
-	jsonutils.WriteJSON(w, 200, response)
+	jsonutils.WriteJSON(w, http.StatusOK, response)
 }
 
 func (cfg *ApiConfig) HandlerGetVisitorsByID(w http.ResponseWriter, r *http.Request) { // GET /api/visitors/{visitor_id}
@@ -253,16 +253,16 @@ func (cfg *ApiConfig) HandlerGetVisitorsByID(w http.ResponseWriter, r *http.Requ
 	// 4. run query
 	visitor, err := cfg.DB.GetVisitorByID(r.Context(), visitorID)
 	if err == sql.ErrNoRows {
-		jsonutils.WriteError(w, 404, err, "visitor not found in database")
+		jsonutils.WriteError(w, http.StatusNotFound, err, "visitor not found in database")
 		return
 	} else if err != nil {
-		jsonutils.WriteError(w, 500, err, "error querying database (GetVisitorByID)")
+		jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (GetVisitorByID)")
 		return
 	}
 
 	// 5. write response
 	response := VisitorsResponseParameters{}
 	response.Populate(visitor)
-	jsonutils.WriteJSON(w, 200, response)
+	jsonutils.WriteJSON(w, http.StatusOK, response)
 
 }

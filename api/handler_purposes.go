@@ -3,6 +3,7 @@ package api
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -34,20 +35,25 @@ func (prp *PurposesResponseParameters) Populate(p database.Purpose) {
 	prp.ParentPurposeID = p.ParentPurposeID
 }
 
+var ErrNotAdmin = errors.New("user does not have admin status")
+
 // Helper function that handles the common logic
 func (cfg *ApiConfig) handlePurposeOperation(
 	w http.ResponseWriter,
 	r *http.Request,
 	operation string, // http operation name (POST, PUT, GET etc.) for error messages
 	requestPtr any, // pointer to request parameter struct (like PurposesPutRequestParameters etc.)
-	dbQuery func() (database.Purpose, error), // function to execute the database query
+	dbQuery func() (database.Purpose, error), // function to execute the database query, so either cfg.DB.CreatePurpose() or cfg.DB.SetPurpose()
 ) {
+	/*
+		This function provides boilerplate for both PUT and POST operations to the /api/purposes endpoint.
+	*/
 	// 1. auth for access: user, isadmin
-	isAdmin, err := auth.IsAdminFromHeader(w, r, cfg, cfg.DB)
+	user, err := auth.UserFromContext(w, r, cfg.DB)
 	if err != nil {
 		return
-	} else if !isAdmin {
-		jsonutils.WriteError(w, 403, err, fmt.Sprintf("non-admin user tried to request %s /api/purposes", operation))
+	} else if !user.IsAdmin {
+		jsonutils.WriteError(w, http.StatusUnauthorized, ErrNotAdmin, fmt.Sprintf("non-admin user tried to request %s /api/purposes", operation))
 		return
 	}
 
@@ -55,23 +61,23 @@ func (cfg *ApiConfig) handlePurposeOperation(
 	decoder := json.NewDecoder(r.Body)
 	err = decoder.Decode(&requestPtr)
 	if err != nil {
-		jsonutils.WriteError(w, 400, err, fmt.Sprintf("user provided invalid JSON in a request to %s /api/purposes", operation))
+		jsonutils.WriteError(w, http.StatusBadRequest, err, fmt.Sprintf("user provided invalid JSON in a request to %s /api/purposes", operation))
 		return
 	}
 
 	// 3. query database (delegated to caller)
 	result, err := dbQuery()
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		switch operation {
 		case "POST":
-			jsonutils.WriteError(w, 400, err, "user provided invalid parent_purpose_id when requesting POST /api/purposes")
+			jsonutils.WriteError(w, http.StatusBadRequest, err, "user provided invalid parent_purpose_id when requesting POST /api/purposes")
 			return
 		case "PUT":
-			jsonutils.WriteError(w, 400, err, "user provided invalid id or parent_purpose_id when requesting PUT /api/purposes")
+			jsonutils.WriteError(w, http.StatusBadRequest, err, "user provided invalid id or parent_purpose_id when requesting PUT /api/purposes")
 			return
 		}
 	} else if err != nil {
-		dbFuncName := ""
+		var dbFuncName string
 		switch operation {
 		case "POST":
 			dbFuncName = "CreatePurpose"
@@ -79,14 +85,14 @@ func (cfg *ApiConfig) handlePurposeOperation(
 			dbFuncName = "SetPurpose"
 		}
 
-		jsonutils.WriteError(w, 500, err, fmt.Sprintf("error querying database (%s)", dbFuncName))
+		jsonutils.WriteError(w, http.StatusInternalServerError, err, fmt.Sprintf("error querying database (%s)", dbFuncName))
 		return
 	}
 
 	// 4. write response
 	response := PurposesResponseParameters{}
 	response.Populate(result)
-	jsonutils.WriteJSON(w, 200, response)
+	jsonutils.WriteJSON(w, http.StatusOK, response)
 }
 
 // POST /api/purposes (admin only)
@@ -114,7 +120,7 @@ func (cfg *ApiConfig) HandlerPutPurposesByID(w http.ResponseWriter, r *http.Requ
 	req := r.PathValue("user_id")
 	purposeID, err := uuid.Parse(req)
 	if err != nil {
-		jsonutils.WriteError(w, 400, err, "endpoint is not a valid user ID")
+		jsonutils.WriteError(w, http.StatusBadRequest, err, "endpoint is not a valid user ID")
 		return
 	}
 
@@ -140,11 +146,11 @@ func (cfg *ApiConfig) HandlerPutPurposesByID(w http.ResponseWriter, r *http.Requ
 func (cfg *ApiConfig) HandlerGetPurposes(w http.ResponseWriter, r *http.Request) {
 	// 1. run query
 	purposes, err := cfg.DB.GetPurposes(r.Context())
-	if err == sql.ErrNoRows {
-		jsonutils.WriteError(w, 404, err, "no purposes found when requesting GET /api/purposes")
+	if errors.Is(err, sql.ErrNoRows) {
+		jsonutils.WriteError(w, http.StatusNotFound, err, "no purposes found when requesting GET /api/purposes")
 		return
 	} else if err != nil {
-		jsonutils.WriteError(w, 500, err, "error querying database (GetPurposes)")
+		jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (GetPurposes)")
 		return
 	}
 
@@ -153,7 +159,7 @@ func (cfg *ApiConfig) HandlerGetPurposes(w http.ResponseWriter, r *http.Request)
 	for i, u := range purposes {
 		response[i].Populate(u)
 	}
-	jsonutils.WriteJSON(w, 200, response)
+	jsonutils.WriteJSON(w, http.StatusOK, response)
 }
 
 func (cfg *ApiConfig) HandlerGetPurposesByID(w http.ResponseWriter, r *http.Request) {

@@ -108,7 +108,7 @@ func (cfg *ApiConfig) AuthMiddleware(next http.Handler) http.Handler {
 
 		// 3. modify context to take ID and pass into next handler
 		ctx := r.Context()
-		ctx = context.WithValue(ctx, "userID", userID.String())
+		ctx = context.WithValue(ctx, auth.UserIDContextKey, userID.String())
 		next.ServeHTTP(w, r.WithContext(ctx))
 
 	})

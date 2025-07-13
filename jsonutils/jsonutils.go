@@ -17,12 +17,12 @@ func WriteError(w http.ResponseWriter, respCode int, err error, msg string) {
 	WriteJSON(w, respCode, e)
 }
 
-func WriteJSON(w http.ResponseWriter, respCode int, payload interface{}) {
+func WriteJSON(w http.ResponseWriter, respCode int, payload any) {
 	w.Header().Set("Content-Type", "application/json")
 	dat, err := json.Marshal(payload)
 	if err != nil {
 		log.Printf("Error marshalling JSON: %s", err)
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	w.WriteHeader(respCode)

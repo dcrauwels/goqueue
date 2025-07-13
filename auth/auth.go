@@ -27,6 +27,10 @@ type databaseQueryer interface {
 	GetVisitorByID(context.Context, uuid.UUID) (database.Visitor, error)
 }
 
+type contextKey string
+
+const UserIDContextKey contextKey = "userID"
+
 func VisitorsByID(w http.ResponseWriter, r *http.Request, cfg configReader, db databaseQueryer) (uuid.UUID, error) {
 	// boilerplate for GET and PUT /api/visitors/{visitor_id}
 	// not sure the second and third return values (accessingID and userType)  are really needed
@@ -88,7 +92,7 @@ func VisitorsByID(w http.ResponseWriter, r *http.Request, cfg configReader, db d
 	return visitorID, nil
 }
 
-func setAuthCookies(w http.ResponseWriter, accessToken, refreshToken string, userID uuid.UUID) {
+func SetAuthCookies(w http.ResponseWriter, accessToken, refreshToken string, userID uuid.UUID) {
 	// Access Token Cookie
 	http.SetCookie(w, &http.Cookie{
 		Name:     "access_token",
