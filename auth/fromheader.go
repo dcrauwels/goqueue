@@ -25,7 +25,7 @@ func UserTypeFromHeader(w http.ResponseWriter, r *http.Request, cfg configReader
 	return userType, nil
 }
 
-func AuthFromHeader[T any](
+func authFromHeader[T any](
 	w http.ResponseWriter,
 	r *http.Request,
 	cfg configReader,
@@ -64,11 +64,11 @@ func AuthFromHeader[T any](
 }
 
 func UserFromHeader(w http.ResponseWriter, r *http.Request, cfg configReader, db databaseQueryer) (database.User, error) {
-	return AuthFromHeader(w, r, cfg, "user", db.GetUserByID)
+	return authFromHeader(w, r, cfg, "user", db.GetUserByID)
 }
 
 func VisitorFromHeader(w http.ResponseWriter, r *http.Request, cfg configReader, db databaseQueryer) (database.Visitor, error) {
-	return AuthFromHeader(w, r, cfg, "visitor", db.GetVisitorByID)
+	return authFromHeader(w, r, cfg, "visitor", db.GetVisitorByID)
 }
 
 func IsAdminFromHeader(w http.ResponseWriter, r *http.Request, cfg configReader, db databaseQueryer) (bool, error) {

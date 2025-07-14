@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -30,10 +31,10 @@ type databaseQueryer interface {
 type contextKey string
 
 const UserIDContextKey contextKey = "userID"
+const VisitorIDContextKey contextKey = "visitorID"
 
 func VisitorsByID(w http.ResponseWriter, r *http.Request, cfg configReader, db databaseQueryer) (uuid.UUID, error) {
 	// boilerplate for GET and PUT /api/visitors/{visitor_id}
-	// not sure the second and third return values (accessingID and userType)  are really needed
 	// 1. read visitor ID from endpoint URI
 	pv := r.PathValue("visitor_id")
 	visitorID, err := uuid.Parse(pv)
@@ -42,21 +43,17 @@ func VisitorsByID(w http.ResponseWriter, r *http.Request, cfg configReader, db d
 		return visitorID, err
 	}
 
-	// 2. read request data: JWT
-	accessToken, err := GetBearerToken(r.Header)
+	// 2. retrieve authentication data from cookies (through XFromContext functions)
+	// 2.1 get user from cookie
+	accessingUser, err := UserFromContext(w, r, db)
 	if err != nil {
-		jsonutils.WriteError(w, 401, err, "no authorization field in request header")
 		return visitorID, err
 	}
 
-	accessingID, userType, err := ValidateJWT(accessToken, cfg.GetSecret())
-	if err != nil {
-		jsonutils.WriteError(w, 403, err, "access token invalid") // is a 403 even the right response code here?
-		return visitorID, err
-	}
+	// 2.2 get visitor from cookie
 
 	// 3. authenticate: either for visitor with matching ID or user (both from JWT in 2)
-	switch userType {
+	switch {
 	case "user": // auth for user
 		accessingParty, err := db.GetUserByID(r.Context(), accessingID)
 		if err == sql.ErrNoRows {
@@ -92,27 +89,29 @@ func VisitorsByID(w http.ResponseWriter, r *http.Request, cfg configReader, db d
 	return visitorID, nil
 }
 
-func SetAuthCookies(w http.ResponseWriter, accessToken, refreshToken string, userID uuid.UUID) {
+func SetAuthCookies(w http.ResponseWriter, accessToken, refreshToken, expectedAuthType string, accessTokenMinuteDuration int) {
 	// Access Token Cookie
 	http.SetCookie(w, &http.Cookie{
-		Name:     "access_token",
+		Name:     fmt.Sprintf("%s_access_token", expectedAuthType),
 		Value:    accessToken,
 		Path:     "/",
-		Expires:  time.Now().Add(60 * time.Minute), // currently set to 1 hour but refer to api.handlerloginuser and api.handlerrefreshuser in handler_auth.go
+		Expires:  time.Now().Add(time.Duration(accessTokenMinuteDuration) * time.Minute), // currently set to 1 hour but refer to api.handlerloginuser and api.handlerrefreshuser in handler_auth.go
 		HttpOnly: true,
 		Secure:   true,
 		SameSite: http.SameSiteLaxMode,
 	})
 
 	// Refresh Token Cookie
-	http.SetCookie(w, &http.Cookie{
-		Name:     "refresh_token",
-		Value:    refreshToken,
-		Path:     "/api/refresh",
-		Expires:  time.Now().Add(1 * 24 * time.Hour),
-		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteStrictMode,
-	})
+	if expectedAuthType != "visitor" {
+		http.SetCookie(w, &http.Cookie{
+			Name:     fmt.Sprintf("%s_refresh_token", expectedAuthType),
+			Value:    refreshToken,
+			Path:     "/api/refresh",
+			Expires:  time.Now().Add(1 * 24 * time.Hour),
+			HttpOnly: true,
+			Secure:   true,
+			SameSite: http.SameSiteStrictMode,
+		})
+	}
 
 }

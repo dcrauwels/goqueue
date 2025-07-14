@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -37,24 +38,24 @@ func (cfg *ApiConfig) CreateUser(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func (cfg *ApiConfig) AuthMiddleware(next http.Handler) http.Handler {
+func (cfg *ApiConfig) AuthUserMiddleware(next http.Handler) http.Handler {
 	// middleware for handling authentication through an access token and refresh token cookie
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// 1. check for access token cookie
-		accessTokenCookie, accessErr := r.Cookie("access_token")
+		accessTokenCookie, accessErr := r.Cookie("user_access_token")
 		if accessErr != nil { // implicitly this means the error returned is http.ErrNoCookie, as request.Cookie can only return that specific error
 			// 1.1 if no access token cookie, check for refresh token cookie
-			refreshTokenCookie, refreshErr := r.Cookie("refresh_token")
+			refreshTokenCookie, refreshErr := r.Cookie("user_refresh_token")
 			// 1.2 if refresh token cookie present: reissue access token cookie
 			if refreshErr == nil { // if accessErr != nil && refreshErr == nil (both errors are guaranteed to be http.ErrNoCookie so this just means
 				// there is no cookie with the "access_token" name but there is a "refresh_token" cookie)
 				// 1.3 get the userID from the old refresh token to rotate the refresh token and make a new JWT
 				oldRefreshToken, err := cfg.DB.RevokeRefreshTokenByToken(r.Context(), refreshTokenCookie.Value) // note that this already revokes the token ... is that bad?
-				if err == sql.ErrNoRows {
-					jsonutils.WriteError(w, 404, err, fmt.Sprintf("no rows found in database matching refresh token %s", refreshTokenCookie.Value))
+				if errors.Is(err, sql.ErrNoRows) {
+					jsonutils.WriteError(w, http.StatusNotFound, err, fmt.Sprintf("no rows found in database matching user refresh token %s", refreshTokenCookie.Value))
 					return
 				} else if err != nil {
-					jsonutils.WriteError(w, 500, err, "error querying database (GetRefreshTokenByToken in AuthMiddleware)")
+					jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (GetRefreshTokenByToken in AuthMiddleware)")
 					return
 				}
 				// 1.3 make a new JWT
@@ -63,7 +64,7 @@ func (cfg *ApiConfig) AuthMiddleware(next http.Handler) http.Handler {
 				// 1.4 rotate refresh token
 				newRefreshToken, err := auth.MakeRefreshToken()
 				if err != nil {
-					jsonutils.WriteError(w, 500, err, "error creating refresh token (in AuthMiddleware)")
+					jsonutils.WriteError(w, http.StatusInternalServerError, err, "error creating refresh token (in AuthMiddleware)")
 					return
 				}
 				rtParams := database.CreateRefreshTokenParams{

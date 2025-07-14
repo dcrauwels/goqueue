@@ -3,6 +3,7 @@ package api
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 	"time"
@@ -65,7 +66,7 @@ func (cfg *ApiConfig) HandlerPostVisitors(w http.ResponseWriter, r *http.Request
 
 	// 2. check purpose for validity
 	purpose, err := cfg.DB.GetPurposesByID(r.Context(), request.PurposeID)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		jsonutils.WriteError(w, http.StatusNotFound, err, "purpose not found in database, please register first")
 		return
 	} else if err != nil {
@@ -116,7 +117,7 @@ func (cfg *ApiConfig) HandlerPutVisitorsByID(w http.ResponseWriter, r *http.Requ
 
 	// 3. validate request? Purpose mainly.
 	_, err = cfg.DB.GetPurposesByID(r.Context(), request.PurposeID)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		jsonutils.WriteError(w, http.StatusNotFound, err, "purpose not found in database")
 		return
 	} else if err != nil {
@@ -132,7 +133,7 @@ func (cfg *ApiConfig) HandlerPutVisitorsByID(w http.ResponseWriter, r *http.Requ
 		Status:    request.Status,
 	}
 	updatedVisitor, err := cfg.DB.SetVisitorByID(r.Context(), queryParams)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		jsonutils.WriteError(w, http.StatusNotFound, err, "updated visitor does not exist in database")
 		return
 	} else if err != nil {
@@ -178,7 +179,7 @@ func (cfg *ApiConfig) HandlerGetVisitors(w http.ResponseWriter, r *http.Request)
 
 	// 2.2 purpose name to purpose ID
 	purpose, err := cfg.DB.GetPurposesByName(r.Context(), queryPurpose)
-	if err == sql.ErrNoRows && queryPurpose != "" { // of course norows is not a problem if querypurpose is empty to begin with
+	if errors.Is(err, sql.ErrNoRows) && queryPurpose != "" { // of course norows is not a problem if querypurpose is empty to begin with
 		jsonutils.WriteError(w, http.StatusNotFound, err, "purpose not found in database")
 		return
 	} else if err != nil {
@@ -194,7 +195,7 @@ func (cfg *ApiConfig) HandlerGetVisitors(w http.ResponseWriter, r *http.Request)
 			Status:    status,
 		}
 		visitors, err = cfg.DB.GetVisitorsByPurposeStatus(r.Context(), queryParams)
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			jsonutils.WriteError(w, http.StatusNotFound, err, "no visitors found in database for purpose "+queryPurpose+" and status "+queryStatus)
 			return
 		} else if err != nil {
@@ -204,7 +205,7 @@ func (cfg *ApiConfig) HandlerGetVisitors(w http.ResponseWriter, r *http.Request)
 
 	case queryPurpose != "" && queryStatus == "": // only purpose query parameter entered
 		visitors, err = cfg.DB.GetVisitorsByPurpose(r.Context(), purpose.ID)
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			jsonutils.WriteError(w, http.StatusNotFound, err, "no visitors found in databae for purpose "+queryPurpose)
 			return
 		} else if err != nil {
@@ -214,7 +215,7 @@ func (cfg *ApiConfig) HandlerGetVisitors(w http.ResponseWriter, r *http.Request)
 
 	case queryPurpose == "" && queryStatus != "": // only status query parameter entered
 		visitors, err = cfg.DB.GetVisitorsByStatus(r.Context(), status)
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			jsonutils.WriteError(w, http.StatusNotFound, err, "no viistors found in databae for status "+queryStatus)
 			return
 		} else if err != nil {
@@ -224,7 +225,7 @@ func (cfg *ApiConfig) HandlerGetVisitors(w http.ResponseWriter, r *http.Request)
 
 	case queryPurpose == "" && queryStatus == "": // neither query parameter entered
 		visitors, err = cfg.DB.GetVisitors(r.Context())
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			jsonutils.WriteError(w, http.StatusNotFound, err, "no visitors found in database")
 			return
 		} else if err != nil {
@@ -252,7 +253,7 @@ func (cfg *ApiConfig) HandlerGetVisitorsByID(w http.ResponseWriter, r *http.Requ
 
 	// 4. run query
 	visitor, err := cfg.DB.GetVisitorByID(r.Context(), visitorID)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		jsonutils.WriteError(w, http.StatusNotFound, err, "visitor not found in database")
 		return
 	} else if err != nil {
