@@ -26,12 +26,18 @@ type configReader interface {
 type databaseQueryer interface {
 	GetUserByID(context.Context, uuid.UUID) (database.User, error)
 	GetVisitorByID(context.Context, uuid.UUID) (database.Visitor, error)
+	CreateRefreshToken(context.Context, database.CreateRefreshTokenParams) (database.RefreshToken, error)
+	RevokeRefreshTokenByToken(context.Context, string) (database.RefreshToken, error)
 }
 
-type contextKey string
+type ContextKey string
 
-const UserIDContextKey contextKey = "userID"
-const VisitorIDContextKey contextKey = "visitorID"
+func (ck ContextKey) String() string {
+	return string(ck)
+}
+
+const UserIDContextKey ContextKey = "userID"
+const VisitorIDContextKey ContextKey = "visitorID"
 
 func VisitorsByID(w http.ResponseWriter, r *http.Request, cfg configReader, db databaseQueryer) (uuid.UUID, error) {
 	// boilerplate for GET and PUT /api/visitors/{visitor_id}
