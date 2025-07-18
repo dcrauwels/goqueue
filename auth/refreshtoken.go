@@ -11,6 +11,8 @@ import (
 	"github.com/dcrauwels/goqueue/jsonutils"
 )
 
+var ErrRefreshTokenInvalid = errors.New("could not revoke old refresh token as it was not found in database")
+
 func MakeRefreshToken() (string, error) {
 	// get the hex
 	key := make([]byte, 32)
@@ -26,7 +28,7 @@ func MakeRefreshToken() (string, error) {
 
 func RotateRefreshToken(db databaseQueryer, w http.ResponseWriter, r *http.Request, oldRefreshTokenCookie *http.Cookie) (database.RefreshToken, error) {
 	/*
-		Function to rotate ()
+		Function to rotate (revoke, then create anew) a refresh token.
 	*/
 
 	// 1. init
@@ -36,10 +38,10 @@ func RotateRefreshToken(db databaseQueryer, w http.ResponseWriter, r *http.Reque
 	oldRefreshToken, err := db.RevokeRefreshTokenByToken(r.Context(), oldRefreshTokenCookie.Value)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			jsonutils.WriteError(w, 404, err, "unable to revoke token: not found in database.")
+			jsonutils.WriteError(w, http.StatusNotFound, ErrRefreshTokenInvalid, "unable to revoke token: not found in database.")
 			return result, err
 		} else {
-			jsonutils.WriteError(w, 500, err, "error querying database(RevokeRefreshTokenByToken in RotateRefreshToken)")
+			jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database(RevokeRefreshTokenByToken in RotateRefreshToken)")
 			return result, err
 		}
 	}
@@ -47,7 +49,7 @@ func RotateRefreshToken(db databaseQueryer, w http.ResponseWriter, r *http.Reque
 	// 3. make new refresh token
 	newRefreshToken, err := MakeRefreshToken()
 	if err != nil {
-		jsonutils.WriteError(w, 500, err, "error creating refresh token (in MakeRefreshToken in RotateRefreshToken)")
+		jsonutils.WriteError(w, http.StatusInternalServerError, err, "error creating refresh token (in MakeRefreshToken in RotateRefreshToken)")
 		return result, err
 	}
 
@@ -58,7 +60,7 @@ func RotateRefreshToken(db databaseQueryer, w http.ResponseWriter, r *http.Reque
 	}
 	result, err = db.CreateRefreshToken(r.Context(), rtParams)
 	if err != nil {
-		jsonutils.WriteError(w, 500, err, "error querying database (CreateRefreshToken in makeAuthMiddleware)")
+		jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (CreateRefreshToken in makeAuthMiddleware)")
 		return result, err
 	}
 

@@ -17,7 +17,7 @@ var ErrNoIDInContext = errors.New("auth: no ID provided in context")
 func authFromContext[T any](
 	w http.ResponseWriter,
 	r *http.Request,
-	ck contextKey,
+	ck ContextKey,
 	expectedAuthType string,
 	GetByID func(context.Context, uuid.UUID) (T, error),
 ) (T, error) {

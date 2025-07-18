@@ -95,7 +95,7 @@ func VisitorsByID(w http.ResponseWriter, r *http.Request, cfg configReader, db d
 	return visitorID, nil
 }
 
-func SetAuthCookies(w http.ResponseWriter, accessToken, refreshToken, expectedAuthType string, accessTokenMinuteDuration int) {
+func SetAuthCookies(w http.ResponseWriter, accessToken, refreshToken, expectedAuthType string, accessTokenMinuteDuration, refreshTokenDayDuration int) {
 	// Access Token Cookie
 	http.SetCookie(w, &http.Cookie{
 		Name:     fmt.Sprintf("%s_access_token", expectedAuthType),
@@ -108,12 +108,12 @@ func SetAuthCookies(w http.ResponseWriter, accessToken, refreshToken, expectedAu
 	})
 
 	// Refresh Token Cookie
-	if expectedAuthType != "visitor" {
+	if expectedAuthType == "user" {
 		http.SetCookie(w, &http.Cookie{
 			Name:     fmt.Sprintf("%s_refresh_token", expectedAuthType),
 			Value:    refreshToken,
 			Path:     "/api/refresh",
-			Expires:  time.Now().Add(1 * 24 * time.Hour),
+			Expires:  time.Now().Add(time.Duration(refreshTokenDayDuration) * 24 * time.Hour),
 			HttpOnly: true,
 			Secure:   true,
 			SameSite: http.SameSiteStrictMode,

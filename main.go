@@ -33,11 +33,18 @@ func main() {
 		log.Printf("Environment variable ACCESSTOKENDURATION not provided: %w", err)
 		panic(err)
 	}
+	refreshTokenDuration, err := strconv.Atoi(os.Getenv("REFRESHTOKENDURATION"))
+	if err != nil {
+		log.Printf("Environment variable REFRESHTOKENDURATION not provided: %w", err)
+		panic(err)
+	}
+
 	apiCfg := api.ApiConfig{
-		DB:                  dbQueries,
-		Secret:              os.Getenv("SECRET"),
-		Env:                 os.Getenv("ENV"),
-		AccessTokenDuration: accessTokenDuration,
+		DB:                   dbQueries,
+		Secret:               os.Getenv("SECRET"),
+		Env:                  os.Getenv("ENV"),
+		AccessTokenDuration:  accessTokenDuration,
+		RefreshTokenDuration: refreshTokenDuration,
 	}
 
 	// servemux
@@ -78,7 +85,7 @@ func main() {
 
 	// fileserver
 	fS := http.FileServer(http.Dir("./frontend/"))
-	mux.Handle("/", fS)
+	mux.Handle("/", apiCfg.AuthUserMiddleware(apiCfg.AuthVisitorMiddleware(fS)))
 
 	// server
 	s := http.Server{
