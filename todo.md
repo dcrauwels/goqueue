@@ -11,13 +11,14 @@
 - [ ] and api.HandlerRevokeRefreshToken also needs an endpoint.
 - [ ] api.HandlerGetPurposesByID is NYI (in api/handler_purposes.go)
 - [ ] Think about whether api.HandlerGetUsersByID needs authentication or not. Leaning towards yes. Also depends on how I will implement a visitor seeing they've been called.
+- [ ] Stop rotating refresh tokens so much, instead only rotate it when you use it for its purpose of generating an access token? Or is the current approach fine?
 
 ## Cookie authentication implementation
 - [x] Unify the access token expiration timer through an environment variable stored in cfg (tough)
 - [x] Same for the refresh token expiration timer
-- [x] The logic in the AuthMiddleware function is very ugly right now (if if if)
+- [x] The logic in the AuthMiddleware function is very ugly right now (if if if) > no wrong
 - [x] Currently the main hinge is http.ErrNoCookie but this should also trigger if the access token is expired, right? (See nice to have todo)
-- [ ] Bookmark at line 120 ish of makeAuthMiddleware function: what to do when the client provides an access token and refresh token cookie, but the refresh token itself is invalid (while the access token *is* valid)?
+- [x] Bookmark at line 120 ish of makeAuthMiddleware function: what to do when the client provides an access token and refresh token cookie, but the refresh token itself is invalid (while the access token *is* valid)? > you reset both cookies and redirect to the login page. This applies to all unexpected states.
 
 # Nice to have
 - [x] Specify the different errors auth.ValidateJWT can spit out to match the reasons for throwing an error. (Token expired, invalid, etc.) > turns out the JWT package has these predefined.

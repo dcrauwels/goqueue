@@ -129,6 +129,7 @@ func (cfg *ApiConfig) HandlerPutUsers(w http.ResponseWriter, r *http.Request) { 
 	// 1. get accessing user from context
 	accessingUser, err := auth.UserFromContext(w, r, cfg.DB)
 	if err != nil {
+		jsonutils.WriteError(w, http.StatusUnauthorized, err, "user authentication required to access PUT /api/users")
 		return
 	}
 
@@ -176,6 +177,7 @@ func (cfg *ApiConfig) HandlerPutUsersByID(w http.ResponseWriter, r *http.Request
 	// 1. retrieve accessing user
 	accessingUser, err := auth.UserFromContext(w, r, cfg.DB)
 	if err != nil {
+		jsonutils.WriteError(w, http.StatusUnauthorized, err, "user authentication required to access PUT /api/users")
 		return
 	}
 
@@ -201,7 +203,7 @@ func (cfg *ApiConfig) HandlerPutUsersByID(w http.ResponseWriter, r *http.Request
 		if accessingUser.ID != userID {
 			jsonutils.WriteError(w, http.StatusForbidden, errors.New("user not authorized to send a PUT request to this endpoint"), "this user account is not authorized to send a PUT request to this endpoint")
 			return
-		} else if request.IsAdmin != accessingUser.IsAdmin || request.IsActive != accessingUser.IsActive { // non-admins cannot set themselves to admin obviously or deactivate themselves
+		} else if (request.IsAdmin && !accessingUser.IsAdmin) || (request.IsActive != accessingUser.IsActive) { // non-admins cannot set themselves to admin obviously or (de)activate themselves
 			jsonutils.WriteError(w, http.StatusForbidden, errors.New("user not authorized to edit these fields on own account"), "this user account cannot edit their own admin or activity status")
 			return
 		}
@@ -237,6 +239,7 @@ func (cfg *ApiConfig) HandlerGetUsers(w http.ResponseWriter, r *http.Request) { 
 	// 1. check if accessing user is admin
 	accessingUser, err := auth.UserFromContext(w, r, cfg.DB)
 	if err != nil {
+		jsonutils.WriteError(w, http.StatusUnauthorized, err, "user authentication required to access GET /api/users")
 		return
 	} else if !accessingUser.IsAdmin {
 		jsonutils.WriteError(w, http.StatusForbidden, err, "GET /api/users is only accessible to admin level users")

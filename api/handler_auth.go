@@ -161,8 +161,7 @@ func (cfg *ApiConfig) HandlerLoginUser(w http.ResponseWriter, r *http.Request) {
 
 func (cfg *ApiConfig) HandlerRefreshUser(w http.ResponseWriter, r *http.Request) { // POST /api/refresh
 	// for getting USERS a new access token based on a valid refresh token
-	// many problems
-	// 1. get request content (refresh token & username combo)
+	// 1. get user information from request
 	type requestParameters struct {
 		RefreshToken string    `json:"refresh_token"`
 		UserID       uuid.UUID `json:"user_id"`
