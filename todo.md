@@ -7,11 +7,15 @@
 - [x] and those 401 status codes being retried with a new access token
 - [ ] In general /api/refresh needs a fresh coat of paint.
 - [x] Carry over visitor authentication to the cookie structure as well (cry)
-- [ ] api.HandlerRevokeRefreshToken is NYI (in api/handler_auth.go)
-- [ ] and api.HandlerRevokeRefreshToken also needs an endpoint.
+- [x] api.HandlerRevokeRefreshToken is NYI (in api/handler_auth.go)
+- [x] and api.HandlerRevokeRefreshToken also needs an endpoint.
 - [ ] api.HandlerGetPurposesByID is NYI (in api/handler_purposes.go)
 - [ ] Think about whether api.HandlerGetUsersByID needs authentication or not. Leaning towards yes. Also depends on how I will implement a visitor seeing they've been called.
 - [ ] Stop rotating refresh tokens so much, instead only rotate it when you use it for its purpose of generating an access token? Or is the current approach fine?
+- [ ] What is auth.VisitorsByID supposed to do? (in auth/auth.go)
+- [ ] All of my http.Redirects are wrong. They more or less all point to "/api/login" which is wrong. It should be an HTML login page like /login. (I think.)
+- [ ] Currently there are no checks for user.IsActive. This needs to either go in AuthUserMiddleware or in all of the individual user authentication checks in handlers. The bottom line is: do we want to allow a user to present an access / refresh token for an inactive account and get that ID added to their context? > No, we don't, so it should be blocked at the AuthUserMiddleware level, where we clear the cookie, throw a 401 Unauthorized error, clear cookies and send them to login. (Also see previous todo.)
+- [ ] What range of statuses will be allowed? There are multiple NYI's for this, mostly in auth_visitors.go.
 
 ## Cookie authentication implementation
 - [x] Unify the access token expiration timer through an environment variable stored in cfg (tough)

@@ -51,9 +51,10 @@ func (cfg *ApiConfig) handlePurposeOperation(
 	// 1. auth for access: user, isadmin
 	user, err := auth.UserFromContext(w, r, cfg.DB)
 	if err != nil {
+		jsonutils.WriteError(w, http.StatusUnauthorized, err, fmt.Sprintf("user authorization is required to request %s /api/purposes", operation))
 		return
 	} else if !user.IsAdmin {
-		jsonutils.WriteError(w, http.StatusUnauthorized, ErrNotAdmin, fmt.Sprintf("non-admin user tried to request %s /api/purposes", operation))
+		jsonutils.WriteError(w, http.StatusForbidden, ErrNotAdmin, fmt.Sprintf("non-admin user tried to request %s /api/purposes", operation))
 		return
 	}
 

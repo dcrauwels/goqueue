@@ -157,12 +157,49 @@ func (q *Queries) RevokeRefreshTokenByToken(ctx context.Context, token string) (
 const revokeRefreshTokenByUserID = `-- name: RevokeRefreshTokenByUserID :many
 UPDATE refresh_tokens
 SET revoked_at = NOW(), updated_at = NOW()
-WHERE user_id = $1 AND expires_at > NOW() AND revoked_at IS NULL -- Also corrected logic (see below)
+WHERE user_id = $1 AND expires_at > NOW() AND revoked_at IS NULL
 RETURNING token, created_at, updated_at, user_id, expires_at, revoked_at
 `
 
 func (q *Queries) RevokeRefreshTokenByUserID(ctx context.Context, userID uuid.UUID) ([]RefreshToken, error) {
 	rows, err := q.db.QueryContext(ctx, revokeRefreshTokenByUserID, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []RefreshToken
+	for rows.Next() {
+		var i RefreshToken
+		if err := rows.Scan(
+			&i.Token,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.UserID,
+			&i.ExpiresAt,
+			&i.RevokedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const revokeRefreshTokens = `-- name: RevokeRefreshTokens :many
+UPDATE refresh_tokens
+SET revoked_at = NOW(), updated_at = NOW()
+WHERE expires_at > NOW() AND revoked_at IS NULL
+returning token, created_at, updated_at, user_id, expires_at, revoked_at
+`
+
+func (q *Queries) RevokeRefreshTokens(ctx context.Context) ([]RefreshToken, error) {
+	rows, err := q.db.QueryContext(ctx, revokeRefreshTokens)
 	if err != nil {
 		return nil, err
 	}

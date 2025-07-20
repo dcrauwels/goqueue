@@ -16,7 +16,7 @@ type ClaimsWithUserType struct {
 	UserType string `json:"usertype"`
 }
 
-var ErrUnexpectedSigningMethod = errors.New("unexpected signing method.")
+var ErrUnexpectedSigningMethod = errors.New("unexpected signing method")
 
 func MakeJWT(ID uuid.UUID, userType string, tokenSecret string, expirationMinutes int) (string, error) {
 	expiresIn := time.Duration(expirationMinutes) * time.Minute
