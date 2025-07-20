@@ -23,6 +23,13 @@
 - [x] The logic in the AuthMiddleware function is very ugly right now (if if if) > no wrong
 - [x] Currently the main hinge is http.ErrNoCookie but this should also trigger if the access token is expired, right? (See nice to have todo)
 - [x] Bookmark at line 120 ish of makeAuthMiddleware function: what to do when the client provides an access token and refresh token cookie, but the refresh token itself is invalid (while the access token *is* valid)? > you reset both cookies and redirect to the login page. This applies to all unexpected states.
+- [ ] Sanity check shower thought: say you send a request directly to let's say POST /api/users (which requires user auth and is_admin status) without a cookie that defines user authentication, but with a custom "user_id" context key with correct value for a user with admin status. Will that pass? Logically speaking: the AuthUserMiddleware function will see no access and refresh token cookies are sent with the request and just pass the whole thing to the handler as is.
+
+## Service log implementation
+- [ ] Define endpoints for /api/servicelogs. Probably POST, GET, PUT.
+- [ ] Write handlers for all of the aforementioned endpoints.
+- [ ] We have the same authentication issue for visitors that we have for GET /api/visitors/{visitor_id}. Basically the question is: if a third party that isn't the visitor themselves knows the URI to the visitor status page and can get information from the service log, is that a problem? Does it matter if someone else can see visitors being called?
+- [ ] Why is it necessary again to have both a visitor and a service log implementation? Given that a visitor only goes in one direction: from waiting, to serving, to served, what does the log add?
 
 # Nice to have
 - [x] Specify the different errors auth.ValidateJWT can spit out to match the reasons for throwing an error. (Token expired, invalid, etc.) > turns out the JWT package has these predefined.
@@ -30,3 +37,4 @@
 
 # Other
 - [ ] Make sure that in api.HandlerLoginUser (in handler_auth.go) that if a POST request is sent to /api/login while an active refresh token is available for this user_id, that it is revoked. There is an edge case where this is possible.
+- [ ] Shower thought: is visitor authentication through cookies even necessary? Currently, the only place it is used, is to send GET requests to /api/visitors/{visitor_id}. But is it really necessary? The alternative method is to simply give visitors the URI to their visitor status page and go from there. 
