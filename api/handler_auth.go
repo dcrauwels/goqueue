@@ -14,11 +14,17 @@ import (
 	"github.com/google/uuid"
 )
 
+type loginRequestParameters struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
 type responseParameters struct {
 	ID               uuid.UUID `json:"id"`
 	CreatedAt        time.Time `json:"created_at"`
 	UpdatedAt        time.Time `json:"updated_at"`
 	Email            string    `json:"email"`
+	FullName         string    `json:"full_name"`
 	IsAdmin          bool      `json:"is_admin"`
 	IsActive         bool      `json:"is_active"`
 	UserAccessToken  string    `json:"user_access_token"`
@@ -88,7 +94,7 @@ func (cfg *ApiConfig) HandlerLoginUser(w http.ResponseWriter, r *http.Request) {
 	// for authenticating USERS, not VISITORS
 	// 1. get request content (email: string, password: string)
 	decoder := json.NewDecoder(r.Body)
-	reqParams := UsersRequestParameters{}
+	reqParams := loginRequestParameters{}
 	err := decoder.Decode(&reqParams)
 	if err != nil {
 		jsonutils.WriteError(w, http.StatusBadRequest, err, "JSON formatting invalid")
@@ -153,6 +159,7 @@ func (cfg *ApiConfig) HandlerLoginUser(w http.ResponseWriter, r *http.Request) {
 		CreatedAt:        user.CreatedAt,
 		UpdatedAt:        user.UpdatedAt,
 		Email:            user.Email,
+		FullName:         user.FullName,
 		IsAdmin:          user.IsAdmin,
 		IsActive:         user.IsActive,
 		UserAccessToken:  userAccessToken,
@@ -215,6 +222,7 @@ func (cfg *ApiConfig) HandlerRefreshUser(w http.ResponseWriter, r *http.Request)
 		CreatedAt:        fullUser.CreatedAt,
 		UpdatedAt:        fullUser.UpdatedAt,
 		Email:            fullUser.Email,
+		FullName:         fullUser.FullName,
 		IsAdmin:          fullUser.IsAdmin,
 		IsActive:         fullUser.IsActive,
 		UserAccessToken:  userAccessToken,
@@ -253,6 +261,7 @@ func (cfg *ApiConfig) HandlerLogoutUser(w http.ResponseWriter, r *http.Request) 
 		CreatedAt:        user.CreatedAt,
 		UpdatedAt:        user.UpdatedAt,
 		Email:            user.Email,
+		FullName:         user.FullName,
 		IsAdmin:          user.IsAdmin,
 		IsActive:         user.IsActive,
 		UserAccessToken:  "",
