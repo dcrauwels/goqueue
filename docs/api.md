@@ -12,7 +12,7 @@ Endpoint for users, which represent the employees calling visitors to their desk
 - `is_admin`: boolean, not nullable. Describes whether the user has admin status. True means the user has admin status.
 - `is_active`: boolean, not nullable. Describes whether the user account is active. True means the account is active. Accounts set to false will be rejected at the /api/login endpoint and by user authentication middleware when trying to access other authentication required endpoints.
 
-## POST
+## POST /api/users
 
 Request to create a new user. Always creates a non-admin user. Checks for user authentication via "user_access_token" and "user_refresh_token" cookies, which are provided at the /api/login endpoint. Requires the accessing user to havse is_admin status.
 
@@ -26,11 +26,11 @@ Request to create a new user. Always creates a non-admin user. Checks for user a
 
 See above.
 
-## PUT
+## PUT /api/users
 
 Can be sent both to the generic /api/users endpoint and to a specific user UUID at /api/users/{user_id}.
 
-### PUT /api/users
+### PUT /api/users (generic)
 
 Meant for altering the active user's own account.Checks for user authentication via "user_access_token" and "user_refresh_token" cookies, which are provided at the /api/login endpoint.
 
@@ -76,7 +76,7 @@ Endpoint for logging in to a user account. Visitors do not need to login as they
 - `user_access_token`: string, nullable. Describes a JSON Web Token (JWT) that authenticates the current user. Always paired with a refresh token. Note that the access token is stateless and is not stored on the server. Encoded with `bcrypt`. The lifespan of this token is defined together with that of the corresponding cookie in the .env variable. (See readme.md.)
 - `user_refresh_token`: string, nullable. Describes a refresh token that is stored on the server in database. Is a hexadecimal encoding of 32 bytes of randomly generated data. The lifespan of this token is defined together with that of the corresponding cookie in the .env variable. (See readme.md.)
 
-## POST
+## POST /api/login
 
 Request to get granted two cookies: "user_access_token" and "user_refresh_token". The lifespans for these cookies are defined in the .env variable. Refer to the readme.md file for more information on setting this up.
 
@@ -91,31 +91,41 @@ See above.
 
 # /api/refresh
 
-## POST
+Endpoint for requesting a new access token when the user already has a valid refresh token. Note that both token types are implemented via HTTPOnly cookies.
+
+**Response parameters:**
+
+- 	`token`: string, unique, not nullable. Represents a refresh token.
+-   `
+
+
+## POST /api/refresh
 
 **Request parameters:**
 
 - 
 
-**Response parameters:**
-
-- 
+## GET /api/refresh
 
 # /api/logout
 
-## POST
+Endpoint for deactivating a user's current authentication credentials. This means that clientside, the "user_access_token" and "user_refresh_token" cookies are nulled and serverside, the refresh token is revoked in the database.
+
+**Response parameters:**
+
+- 
+
+## POST /api/logout
 
 **Request parameters:**
 
 - 
 
-**Response parameters:**
 
-- 
 
 # /api/visitors
 
-## POST
+## POST /api/visitors
 
 **Request parameters:**
 
@@ -125,7 +135,7 @@ See above.
 
 - 
 
-## PUT
+## PUT /api/visitors
 
 Can only be sent to an endpoint with a specific visitor UUID.
 
@@ -139,7 +149,7 @@ Can only be sent to an endpoint with a specific visitor UUID.
 
 - 
 
-## GET
+## GET /api/visitors
 
 **Request parameters:**
 
