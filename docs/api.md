@@ -51,10 +51,10 @@ Meant for altering any user's account. This requires admin status. Checks for us
 
 **Request parameters for PUT /api/users/{user_id}:**
 
-- email: string, unique, not nullable. Describes user email address. 
-- full_name: string, nullable. Describes first, possibly middle and last name for user.
-- is_admin: boolean, not nullable. Describes whether the user has admin status. True means the user has admin status.
-- is_active: boolean, not nullable. Describes whether the user account is active. True means the account is active. Accounts set to false will be rejected at the /api/login endpoint and by user authentication middleware when trying to access other authentication required endpoints.
+- `email`: string, unique, not nullable. Describes user email address. 
+- `full_name`: string, nullable. Describes first, possibly middle and last name for user.
+- `is_admin`: boolean, not nullable. Describes whether the user has admin status. True means the user has admin status.
+- `is_active`: boolean, not nullable. Describes whether the user account is active. True means the account is active. Accounts set to false will be rejected at the /api/login endpoint and by user authentication middleware when trying to access other authentication required endpoints.
 
 **Response parameters for PUT /api/users/{user_id}:**
 
@@ -111,45 +111,71 @@ Endpoint for requesting a new access token when the user already has a valid ref
 
 Endpoint for deactivating a user's current authentication credentials. This means that clientside, the "user_access_token" and "user_refresh_token" cookies are nulled and serverside, the refresh token is revoked in the database.
 
-**Response parameters:**
-
-- 
+**Response parameters for all requests to /api/logout:**
+- `id`: UUID, unique, not nullable. Key value identifying user in database.
+- `created_at`: timestamp, not nullable. Describes the moment in time the user account was created.
+- `updated_at`: timestamp, not nullable. Describes the last time the user account database row was updated.
+- `email`: string, unique, not nullable. Describes user email address.
+- `full_name`: string, nullable. Describes first, possibly middle and last name for user.
+- `is_admin`: boolean, not nullable. Describes whether the user has admin status. True means the user has admin status.
+- `is_active`: boolean, not nullable. Describes whether the user account is active. True means the account is active. Accounts set to false will be rejected at the /api/login endpoint and by user authentication middleware when trying to access other authentication required endpoints.
+- `user_access_token`: string, null. Describes a JWT access token authenticating the user. Note that the cookie containing this token on the client's end is also nulled.
+- `user_refresh_token`: string, null. Note that the cookie containing this token on the client's end is also nulled.
 
 ## POST /api/logout
 
 **Request parameters:**
 
-- 
-
-
+None, the user identity is taken from the HTTP request context. By extension, this means it is taken from the user_access_token cookie and validated against the user_refresh_token cookie.
 
 # /api/visitors
+Endpoint for handling visitors, who are models of actual human visitors to the physical location. In terms of permissions, they are placed below users. Users can edit visitors (through PUT /api/visitors) but visitors cannot edit users.
+
+**Response parameters for all requests to /api/visitors:**
+- `id`: UUID, unique, not nullable. Key value for identifying visitor in database.
+- `created_at`: timestamp, not nullable. Describes the moment in time the visitor entry was created.
+- `updated_at`: timestamp, not nullable. Describes the last time the visitor database row was updated.
+- `waiting_since`: timestamp, not nullable. Describes the moment in time since when the visitor has been waiting. For purposes of determining which visitor is called (whether FIFO or LIFO).
+- `name`: string, nullable. Describes the name of the visitor waiting in line. Note that this is currently nullable while the corresponding field in the POST request is not.
+- `purpose_id`: UUID, not nullable. Identifies the visitor chosen purpose in the purpose database.
+- `status`: int (32 bit), not nullable. Describes the status of the visitor: waiting, being helped, helped, cancelled by visitor, cancelled by user. NYI.
 
 ## POST /api/visitors
 
 **Request parameters:**
 
-- 
+- `name`: string, not nullable. Subject to change. Contains the name of the visitor.
+- `purpose_id`: UUID, not nullable. Identifies the visitor chosen purpose in the purpose database. There should be a very limited number of purposes ultimately. 
+
+Regarding the notes 'subject to change': I am making the `name` field nullable in a future version. Additionally, I think passing the purpose as a UUID is quite hostile to the user and there is an option to make pass by name instead. The problem is that names are technically not unique values by design.
 
 **Response parameters:**
 
-- 
+In addition to the general response parameters described above, a successful POST request also returns:
+- `visitor_access_token`: string, not nullable. Describes a JWT access token authenticating the visitor.
+Currently, there is no structure for saving the access token as a cookie in the way that this happens for users. In a future version, this will be implemented.
 
 ## PUT /api/visitors
 
-Can only be sent to an endpoint with a specific visitor UUID.
+Can only be sent to an endpoint with a specific visitor UUID. Meant for altering a visitor's status. Can be performed either by a user or by the visitor in question.
 
 ### PUT /api/visitors/{visitor_id}
 
 **Request parameters:**
 
-- 
+- `name`: string, not nullable. Subject to change. Contains the name of the visitor.
+- `purpose_id`: UUID, not nullable. Identifies the visitor chosen purpose in the purpose database. There should be a very limited number of purposes ultimately. 
+- `status`: int (32 bit), not nullable. Describes the status of the visitor: waiting, being helped, helped, cancelled by visitor, cancelled by user. NYI.
 
 **Response parameters:**
 
-- 
+See above. Subject to change: there's an argument to be made the visitor access token should be returned as well iff the request is sent with visitor authentication.
 
 ## GET /api/visitors
+
+Can be sent both to the generic /api/visitors endpoint and to a specific visitor UUID endpoint. Requests to the generic endpoint will return all visitors and can therefore only be made to users. This is integral to populating a list of visitors to be called. Requests to the specific endpoint can also be made with visitor authentication if the visitor access token matches the UUID where the request is being sent to.
+
+Furthermore, when sending a request to the generic /api/visitors endpoint, the user can supply query parameters
 
 **Request parameters:**
 
