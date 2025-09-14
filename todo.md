@@ -1,6 +1,6 @@
 # Must-have
 - [x] Implement refresh token rotation in handler_auth.go
-- [ ] Update docs/api.md
+- [x] Update docs/api.md
 - [x] Replace the frontend cookie handling with a backend based system using HTTP-Only cookies instead
 - [x] 401 status codes when access token is expired
 - [x] those 401 status codes being caught and leading to a POST request to /api/refresh
@@ -9,7 +9,7 @@
 - [x] Carry over visitor authentication to the cookie structure as well (cry)
 - [x] api.HandlerRevokeRefreshToken is NYI (in api/handler_auth.go)
 - [x] and api.HandlerRevokeRefreshToken also needs an endpoint.
-- [ ] api.HandlerGetPurposesByID is NYI (in api/handler_purposes.go)
+- [x] api.HandlerGetPurposesByID is NYI (in api/handler_purposes.go)
 - [ ] Think about whether api.HandlerGetUsersByID needs authentication or not. Leaning towards yes. Also depends on how I will implement a visitor seeing they've been called.
 - [ ] Stop rotating refresh tokens so much, instead only rotate it when you use it for its purpose of generating an access token? Or is the current approach fine?
 - [ ] What is auth.VisitorsByID supposed to do? (in auth/auth.go)
@@ -23,7 +23,7 @@
 - [x] The logic in the AuthMiddleware function is very ugly right now (if if if) > no wrong
 - [x] Currently the main hinge is http.ErrNoCookie but this should also trigger if the access token is expired, right? (See nice to have todo)
 - [x] Bookmark at line 120 ish of makeAuthMiddleware function: what to do when the client provides an access token and refresh token cookie, but the refresh token itself is invalid (while the access token *is* valid)? > you reset both cookies and redirect to the login page. This applies to all unexpected states.
-- [ ] Sanity check shower thought: say you send a request directly to let's say POST /api/users (which requires user auth and is_admin status) without a cookie that defines user authentication, but with a custom "user_id" context key with correct value for a user with admin status. Will that pass? Logically speaking: the AuthUserMiddleware function will see no access and refresh token cookies are sent with the request and just pass the whole thing to the handler as is.
+- [ ] Sanity check shower thought: say you send a request directly to let's say POST /api/users (which requires user auth and is_admin status) without a cookie that defines user authentication, but with a custom "user_id" context key with correct value for a user with admin status. Will that pass? Logically speaking: the AuthUserMiddleware function will see no access and refresh token cookies are sent with the request and just pass the whole thing to the handler as is. > The solution is to make AuthUserMiddleware pass a null user_id value to the handler if no valid cookie is presented. Though this make introduce obscure authentication bugs.
 
 ## Service log implementation
 - [ ] Define endpoints for /api/servicelogs. Probably POST, GET, PUT.

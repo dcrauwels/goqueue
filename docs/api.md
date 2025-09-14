@@ -175,13 +175,14 @@ See above. Subject to change: there's an argument to be made the visitor access 
 
 Can be sent both to the generic /api/visitors endpoint and to a specific visitor UUID endpoint. Requests to the generic endpoint will return all visitors and can therefore only be made to users. This is integral to populating a list of visitors to be called. Requests to the specific endpoint can also be made with visitor authentication if the visitor access token matches the UUID where the request is being sent to.
 
-Furthermore, when sending a request to the generic /api/visitors endpoint, the user can supply query parameters
+The generic /api/visitors endpoint takes query parameters for GET requests. This can be used to filter for visitors with specific statuses or purposes. The point of this feature is to allow users to generate usable lists of visitors for calling purposes. Example: GET /api/visitors?purpose=finances&status=1
 
-**Request parameters:**
+**Query parameters for generic endpoint:**
 
-- 
+- `purpose`: string, takes a purpose name right now, but this is intractible due to purpose names being nonunique. Subject to change in a future build.
+- `status`: integer. NYI. 
 
 **Response parameters:**
 
-- 
+Returns either a set of visitors or a single visitor, depending on whether the request is sent to the generic or the specific endpoint. Parameters are as in the endpoint wide response parameters described abovess.
 

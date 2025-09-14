@@ -98,7 +98,7 @@ func (cfg *ApiConfig) handlePurposeOperation(
 
 // POST /api/purposes (admin only)
 func (cfg *ApiConfig) HandlerPostPurposes(w http.ResponseWriter, r *http.Request) {
-	var request PurposesRequestParameters
+	var request PurposesRequestParameters // note that we only need to inituate a PurposeRequestParameters struct and it is populated by handlePurposeOperation
 
 	cfg.handlePurposeOperation(w, r, "POST",
 		&request,
@@ -115,7 +115,7 @@ func (cfg *ApiConfig) HandlerPostPurposes(w http.ResponseWriter, r *http.Request
 
 // PUT /api/purposes/{purpose_id} (admin only)
 func (cfg *ApiConfig) HandlerPutPurposesByID(w http.ResponseWriter, r *http.Request) {
-	var request PurposesRequestParameters
+	var request PurposesRequestParameters // note that we only need to inituate a PurposeRequestParameters struct and it is populated by handlePurposeOperation
 
 	// retrieve request ID
 	req := r.PathValue("user_id")
@@ -148,7 +148,7 @@ func (cfg *ApiConfig) HandlerGetPurposes(w http.ResponseWriter, r *http.Request)
 	// 1. run query
 	purposes, err := cfg.DB.GetPurposes(r.Context())
 	if errors.Is(err, sql.ErrNoRows) {
-		jsonutils.WriteError(w, http.StatusNotFound, err, "no purposes found when requesting GET /api/purposes")
+		jsonutils.WriteError(w, http.StatusNotFound, err, "no purposes found in database when requesting GET /api/purposes")
 		return
 	} else if err != nil {
 		jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (GetPurposes)")
@@ -164,5 +164,26 @@ func (cfg *ApiConfig) HandlerGetPurposes(w http.ResponseWriter, r *http.Request)
 }
 
 func (cfg *ApiConfig) HandlerGetPurposesByID(w http.ResponseWriter, r *http.Request) {
-	// NYI do I even want this?
+	// 1. get purpose ID from endpoint
+	req := r.PathValue("purpose_id")
+	purposeID, err := uuid.Parse(req)
+	if err != nil {
+		jsonutils.WriteError(w, http.StatusBadRequest, err, "endpoint is not a valid UUID")
+		return
+	}
+
+	// 2. run query
+	purpose, err := cfg.DB.GetPurposesByID(r.Context(), purposeID)
+	if errors.Is(err, sql.ErrNoRows) {
+		jsonutils.WriteError(w, http.StatusNotFound, err, "no purposes found in database when requesting GET /api/purpose/{purpose_id}")
+		return
+	} else if err != nil {
+		jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (GetPurposesByID)")
+		return
+	}
+
+	// 3. write response
+	var response PurposesResponseParameters
+	response.Populate(purpose)
+	jsonutils.WriteJSON(w, http.StatusOK, response)
 }

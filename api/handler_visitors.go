@@ -183,23 +183,18 @@ func (cfg *ApiConfig) HandlerGetVisitors(w http.ResponseWriter, r *http.Request)
 	// 2.2 check status for validity
 	// NYI
 
-	// 2.3 purpose name to purpose ID
-	purpose, err := cfg.DB.GetPurposesByName(r.Context(), queryPurpose)
+	// 2.3 parse purpose QP as UUID
+	purpose, err := uuid.Parse(queryPurpose)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) && queryPurpose != "" { // of course norows is not a problem if querypurpose is empty to begin with
-			jsonutils.WriteError(w, http.StatusNotFound, err, "purpose not found in database")
-			return
-		} else {
-			jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (GetPurposesByName)")
-			return
-		}
+		jsonutils.WriteError(w, http.StatusBadRequest, err, "query parameter 'purpose' only takes UUID values")
+		return
 	}
 
 	// 3. query database
 	switch {
 	case queryPurpose != "" && queryStatus != "": // both query parameters entered
 		queryParams := database.GetVisitorsByPurposeStatusParams{
-			PurposeID: purpose.ID,
+			PurposeID: purpose,
 			Status:    status,
 		}
 		visitors, err = cfg.DB.GetVisitorsByPurposeStatus(r.Context(), queryParams)
@@ -212,7 +207,7 @@ func (cfg *ApiConfig) HandlerGetVisitors(w http.ResponseWriter, r *http.Request)
 		}
 
 	case queryPurpose != "" && queryStatus == "": // only purpose query parameter entered
-		visitors, err = cfg.DB.GetVisitorsByPurpose(r.Context(), purpose.ID)
+		visitors, err = cfg.DB.GetVisitorsByPurpose(r.Context(), purpose)
 		if errors.Is(err, sql.ErrNoRows) {
 			jsonutils.WriteError(w, http.StatusNotFound, err, "no visitors found in database for purpose "+queryPurpose)
 			return
