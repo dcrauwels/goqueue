@@ -172,29 +172,32 @@ func (cfg *ApiConfig) HandlerLoginUser(w http.ResponseWriter, r *http.Request) {
 
 func (cfg *ApiConfig) HandlerRefreshUser(w http.ResponseWriter, r *http.Request) { // POST /api/refresh
 	// for getting USERS a new access token based on a valid refresh token
-	// 1. get user information from request
-	type requestParameters struct {
-		RefreshToken string    `json:"refresh_token"`
-		UserID       uuid.UUID `json:"user_id"`
-	}
-	reqParams := requestParameters{}
-	decoder := json.NewDecoder(r.Body)
-	err := decoder.Decode(&reqParams)
-	if err != nil {
-		jsonutils.WriteError(w, 400, err, "invalid JSON request structure")
+	// 1. get user from context
+	user, err := auth.UserFromContext(w, r, cfg.DB)
+	if err != nil { // error handling
+		jsonutils.WriteError(w, http.StatusUnauthorized, err, "user authentication required to access /api/logout")
 		return
 	}
 
 	// 2. validate refresh token through DB query
-	fullRefreshToken, err := cfg.DB.GetRefreshTokenByToken(r.Context(), reqParams.RefreshToken)
-	if err == sql.ErrNoRows {
-		jsonutils.WriteError(w, 404, err, "refresh token not found")
+	validRefreshTokens, err := cfg.DB.GetRefreshTokensByUserID(r.Context(), user.ID)
+	if errors.Is(err, sql.ErrNoRows) {
+		jsonutils.WriteError(w, http.StatusNotFound, err, "refresh token not found")
 		return
 	} else if err != nil {
-		jsonutils.WriteError(w, 500, err, "error querying database")
+		jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (GetRefreshTokensByUserID in HandlerRefreshUser)")
 		return
 	}
-	if reqParams.UserID != fullRefreshToken.UserID || fullRefreshToken.ExpiresAt.After(time.Now()) {
+	// 2.1 if more than one valid refresh token is available: rotate fully (revoke all, return new token)
+	if len(validRefreshTokens) != 1 {
+		_, err = cfg.DB.RevokeRefreshTokenByUserID(r.Context(), user.ID)
+		if err != nil {
+			jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (RevokeRefreshTokensByUserID in HandlerRefreshUsers)")
+			return
+		}
+	}
+
+	if user.ID != fullRefreshToken.UserID || fullRefreshToken.ExpiresAt.After(time.Now()) {
 		jsonutils.WriteError(w, 403, err, "refresh token invalid")
 		return
 	}
