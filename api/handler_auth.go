@@ -115,7 +115,7 @@ func (cfg *ApiConfig) HandlerLoginUser(w http.ResponseWriter, r *http.Request) {
 		jsonutils.WriteError(w, http.StatusNotFound, err, "email or password incorrect")
 		return
 	}
-	// 2.5 check if refresh token already exists
+	// 2.1 check if refresh token already exists
 	_, err = cfg.DB.GetRefreshTokensByUserID(r.Context(), user.ID)
 	if err == nil {
 		jsonutils.WriteError(w, http.StatusSeeOther, err, "user already logged in, use /api/refresh endpoint instead")
@@ -195,43 +195,56 @@ func (cfg *ApiConfig) HandlerRefreshUser(w http.ResponseWriter, r *http.Request)
 			jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (RevokeRefreshTokensByUserID in HandlerRefreshUsers)")
 			return
 		}
-	}
-
-	if user.ID != fullRefreshToken.UserID || fullRefreshToken.ExpiresAt.After(time.Now()) {
-		jsonutils.WriteError(w, 403, err, "refresh token invalid")
+		jsonutils.WriteError(w, http.StatusUnauthorized, errors.New("auth: user has more than one valid refresh token"), "too many refresh tokens found")
 		return
 	}
 
-	// 2.5 rotate refresh token (revoke old token, return new token) NYI
+	// 2.2 define single refresh token
+	refreshToken := validRefreshTokens[0]
+
+	// 2.3 check token expiration. UserID check should be superfluous (as the query should also test for this) but why not
+	if user.ID != refreshToken.UserID || refreshToken.ExpiresAt.After(time.Now()) {
+		_, err = cfg.DB.RevokeRefreshTokenByToken(r.Context(), refreshToken.Token)
+		if err != nil {
+			jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (RevokeRefreshTokenByToken in HandlerRefreshUsers)")
+			return
+		}
+		jsonutils.WriteError(w, http.StatusUnauthorized, errors.New("auth: refresh token not valid"), "invalid refresh token provided in context")
+		return
+	}
+
+	// 2.4 rotate refresh token
+	refreshTokenCookie, err := r.Cookie("user_refresh_token")
+	if err != nil {
+		jsonutils.WriteError(w, http.StatusBadRequest, err, "user_refresh_token cookie not found")
+		return
+	}
+	newRefreshToken, err := auth.RotateRefreshToken(cfg.DB, w, r, refreshTokenCookie)
+	if err != nil {
+		jsonutils.WriteError(w, http.StatusInternalServerError, err, "error rotating refresh token (RotateRefreshToken in HandlerRefreshUser)")
+		return
+	}
 
 	// 3. generate access token
-	userAccessToken, err := auth.MakeJWT(reqParams.UserID, "user", cfg.Secret, 60)
+	userAccessToken, err := auth.MakeJWT(user.ID, "user", cfg.Secret, cfg.AccessTokenDuration)
 	if err != nil {
-		jsonutils.WriteError(w, 500, err, "error creating access token")
+		jsonutils.WriteError(w, http.StatusInternalServerError, err, "error creating access token")
 		return
 	}
 
-	// 4. return access token to user
-	fullUser, err := cfg.DB.GetUserByID(r.Context(), reqParams.UserID)
-	if err == sql.ErrNoRows {
-		jsonutils.WriteError(w, 404, err, "user does not exist any more")
-		return
-	} else if err != nil {
-		jsonutils.WriteError(w, 500, err, "error querying database")
-		return
-	}
+	// 4. return access token to user > Not sure this is correct
 	respParams := responseParameters{
-		ID:               fullUser.ID,
-		CreatedAt:        fullUser.CreatedAt,
-		UpdatedAt:        fullUser.UpdatedAt,
-		Email:            fullUser.Email,
-		FullName:         fullUser.FullName,
-		IsAdmin:          fullUser.IsAdmin,
-		IsActive:         fullUser.IsActive,
+		ID:               user.ID,
+		CreatedAt:        user.CreatedAt,
+		UpdatedAt:        user.UpdatedAt,
+		Email:            user.Email,
+		FullName:         user.FullName,
+		IsAdmin:          user.IsAdmin,
+		IsActive:         user.IsActive,
 		UserAccessToken:  userAccessToken,
-		UserRefreshToken: fullRefreshToken.Token,
+		UserRefreshToken: newRefreshToken.Token,
 	}
-	jsonutils.WriteJSON(w, 200, respParams)
+	jsonutils.WriteJSON(w, http.StatusOK, respParams)
 }
 
 func (cfg *ApiConfig) HandlerLogoutUser(w http.ResponseWriter, r *http.Request) {
