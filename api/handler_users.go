@@ -270,17 +270,31 @@ func (cfg *ApiConfig) HandlerGetUsersByID(w http.ResponseWriter, r *http.Request
 		ones, because a visitor needs to be able to see who is calling him. I might decide to change this at a later date though.
 	*/
 
-	// 1. get user ID from request uri
+	// 1. check authentication from context
+	accessingUser, err := auth.UserFromContext(w, r, cfg.DB)
+	if errors.Is(err, auth.ErrNoIDInContext) {
+		jsonutils.WriteError(w, http.StatusUnauthorized, err, "user authentication required to access this endpoint")
+		return
+	} else if err != nil {
+		return // any other err than auth.ErrNoIDInContext already sends a json.WriteError so no additional error writing is needed
+	}
+	// 1.1 sanity checks
+	if accessingUser.IsActive != true {
+		jsonutils.WriteError(w, http.StatusForbidden, err, "accessing user account is inactive")
+		return
+	}
+
+	// 2. get user ID from request uri
 	req := r.PathValue("user_id")
 
-	// 2. check for validity
+	// 3. check for validity
 	userID, err := uuid.Parse(req)
 	if err != nil {
 		jsonutils.WriteError(w, http.StatusBadRequest, err, "endpoint is not a valid user ID")
 		return
 	}
 
-	// 3. run query
+	// 4. run query
 	user, err := cfg.GetUserByID(r.Context(), userID)
 	if errors.Is(err, sql.ErrNoRows) {
 		jsonutils.WriteError(w, http.StatusNotFound, err, "user not found")
@@ -289,7 +303,7 @@ func (cfg *ApiConfig) HandlerGetUsersByID(w http.ResponseWriter, r *http.Request
 		jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database")
 		return
 	}
-	// 4. write response
+	// 5. write response
 	response := UsersResponseParameters{}
 	response.Populate(user)
 	jsonutils.WriteJSON(w, http.StatusOK, response)

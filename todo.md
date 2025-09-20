@@ -5,12 +5,12 @@
 - [x] 401 status codes when access token is expired
 - [x] those 401 status codes being caught and leading to a POST request to /api/refresh
 - [x] and those 401 status codes being retried with a new access token
-- [ ] In general /api/refresh needs a fresh coat of paint.
+- [x] In general /api/refresh needs a fresh coat of paint.
 - [x] Carry over visitor authentication to the cookie structure as well (cry)
 - [x] api.HandlerRevokeRefreshToken is NYI (in api/handler_auth.go)
 - [x] and api.HandlerRevokeRefreshToken also needs an endpoint.
 - [x] api.HandlerGetPurposesByID is NYI (in api/handler_purposes.go)
-- [ ] Think about whether api.HandlerGetUsersByID needs authentication or not. Leaning towards yes. Also depends on how I will implement a visitor seeing they've been called.
+- [x] Think about whether api.HandlerGetUsersByID needs authentication or not. Leaning towards yes. Also depends on how I will implement a visitor seeing they've been called. > currently implemented a check for user auth
 - [ ] Stop rotating refresh tokens so much, instead only rotate it when you use it for its purpose of generating an access token? Or is the current approach fine?
 - [ ] What is auth.VisitorsByID supposed to do? (in auth/auth.go)
 - [ ] All of my http.Redirects are wrong. They more or less all point to "/api/login" which is wrong. It should be an HTML login page like /login. (I think.)
