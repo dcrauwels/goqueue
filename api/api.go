@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"net/http"
 	"time"
@@ -79,8 +80,9 @@ func (cfg *ApiConfig) AuthUserMiddleware(next http.Handler) http.Handler {
 				http.Redirect(w, r, r.URL.Path, http.StatusSeeOther)
 				return
 			} else { // so if accessErr != nil && refreshErr != nil, meaning no cookie was found for either access or refresh token
-				next.ServeHTTP(w, r) // then we just pass on to the handler function in question and let it write an error if auth is required
-				return
+				ctx := r.Context()
+				ctx = context.WithValue(ctx, auth.UserIDContextKey, "") // this is to prevent an attacker sending a request without the cookie but with the UserIDContextKey manually set
+				next.ServeHTTP(w, r.WithContext(ctx))
 			}
 		}
 
@@ -155,9 +157,25 @@ func (cfg *ApiConfig) AuthUserMiddleware(next http.Handler) http.Handler {
 			SameSite: http.SameSiteStrictMode,
 		})
 
+		// 2.4 check if user is active
+		var uid string
+		user, err := cfg.DB.GetUserByID(r.Context(), userID)
+		if errors.Is(err, sql.ErrNoRows) { // unexpected state: a non-existing user is specified in the access token jwt
+			auth.SetAuthCookies(w, "", "", "user", cfg.AccessTokenDuration, cfg.RefreshTokenDuration)
+			http.Redirect(w, r, "/api/login", http.StatusSeeOther)
+			return
+		} else if err != nil {
+			jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (GetUserByID in AuthUserMiddleware)")
+			return
+		}
+		if !user.IsActive { // NYI
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+		}
+
 		// 3. modify context to take ID and pass into next handler
+		uid = userID.String()
 		ctx := r.Context()
-		ctx = context.WithValue(ctx, auth.UserIDContextKey, userID.String())
+		ctx = context.WithValue(ctx, auth.UserIDContextKey, uid)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

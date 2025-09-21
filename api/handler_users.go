@@ -279,7 +279,7 @@ func (cfg *ApiConfig) HandlerGetUsersByID(w http.ResponseWriter, r *http.Request
 		return // any other err than auth.ErrNoIDInContext already sends a json.WriteError so no additional error writing is needed
 	}
 	// 1.1 sanity checks
-	if accessingUser.IsActive != true {
+	if !accessingUser.IsActive {
 		jsonutils.WriteError(w, http.StatusForbidden, err, "accessing user account is inactive")
 		return
 	}
