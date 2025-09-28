@@ -30,12 +30,12 @@ func main() {
 	// set up ApiConfig
 	accessTokenDuration, err := strconv.Atoi(os.Getenv("ACCESSTOKENDURATION"))
 	if err != nil {
-		log.Printf("Environment variable ACCESSTOKENDURATION not provided: %w", err)
+		log.Printf("Environment variable ACCESSTOKENDURATION not provided: %v", err)
 		panic(err)
 	}
 	refreshTokenDuration, err := strconv.Atoi(os.Getenv("REFRESHTOKENDURATION"))
 	if err != nil {
-		log.Printf("Environment variable REFRESHTOKENDURATION not provided: %w", err)
+		log.Printf("Environment variable REFRESHTOKENDURATION not provided: %v", err)
 		panic(err)
 	}
 
@@ -69,9 +69,9 @@ func main() {
 	mux.Handle("POST /api/revoke/{user_id}", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerRevokeRefreshToken))) // ok
 	//handler_visitors.go
 	mux.HandleFunc("POST /api/visitors", apiCfg.HandlerPostVisitors)
-	mux.Handle("PUT /api/visitors/{visitor_id}", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerPutVisitorsByID)))                               // ok
-	mux.Handle("GET /api/visitors", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerGetVisitors)))                                                // ok
-	mux.Handle("GET /api/visitors/{visitor_id}", apiCfg.AuthUserMiddleware(apiCfg.AuthVisitorMiddleware(http.HandlerFunc(apiCfg.HandlerGetVisitorsByID)))) // ok
+	mux.Handle("PUT /api/visitors/{visitor_id}", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerPutVisitorsByID))) // ok
+	mux.Handle("GET /api/visitors", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerGetVisitors)))                  // ok
+	mux.Handle("GET /api/visitors/{visitor_id}", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerGetVisitorsByID))) // ok
 	//handler_purposes.go
 	mux.Handle("POST /api/purposes", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerPostPurposes)))                // ok
 	mux.Handle("PUT /api/purposes/{purpose_id}", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerPutPurposesByID))) // ok

@@ -119,7 +119,6 @@ func (cfg *ApiConfig) HandlerLoginUser(w http.ResponseWriter, r *http.Request) {
 	_, err = cfg.DB.GetRefreshTokensByUserID(r.Context(), user.ID)
 	if err == nil {
 		jsonutils.WriteError(w, http.StatusSeeOther, err, "user already logged in, use /api/refresh endpoint instead")
-		http.Redirect(w, r, "/api/refresh", http.StatusSeeOther)
 		return
 	} else if !errors.Is(err, sql.ErrNoRows) {
 		jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (GetRefreshTokensByUserID in HandlerLoginUser)")
@@ -306,10 +305,10 @@ func (cfg *ApiConfig) HandlerRevokeRefreshToken(w http.ResponseWriter, r *http.R
 		jsonutils.WriteError(w, http.StatusUnauthorized, err, "user authentication required to access POST /api/revoke")
 		return
 	} else if accessingUser.ID == userID { // in this case the user is sending a revoke request for themselves, which should be a logout instead
-		http.Redirect(w, r, "/api/logout", http.StatusSeeOther)
+		jsonutils.WriteJSON(w, http.StatusBadRequest, "user is trying to revoke self - this is done through POST /api/logout")
 		return
 	} else if !accessingUser.IsAdmin {
-		jsonutils.WriteError(w, http.StatusForbidden, err, "non-admin users are not allowed to send POST requests to /api/revoke")
+		jsonutils.WriteJSON(w, http.StatusForbidden, "non-admin users are not allowed to send POST requests to /api/revoke")
 		return
 	}
 

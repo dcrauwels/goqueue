@@ -10,7 +10,6 @@ import (
 	"github.com/dcrauwels/goqueue/auth"
 	"github.com/dcrauwels/goqueue/internal/database"
 	"github.com/dcrauwels/goqueue/jsonutils"
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
 
@@ -57,29 +56,33 @@ func (cfg *ApiConfig) AuthUserMiddleware(next http.Handler) http.Handler {
 				// there is no cookie with the "access_token" name but there is a "refresh_token" cookie)
 
 				// 1.3 rotate refresh token
-				rotatedRefreshToken, err := auth.RotateRefreshToken(cfg.DB, w, r, refreshTokenCookie)
-				if err != nil { // in other words: if we have a refresh token cookie but the corresponding token is not working
-					// if refresh token is broken, best to redirect to login
+				rotatedRefreshToken, err := auth.RotateRefreshToken(cfg.DB, w, r, refreshTokenCookie) // note that auth.RotateRefreshToken() does a lot of heavy lifting here and checks token validity
+				if err != nil {
+					// this error is thrown if there is an issue with the refresh token provided in the corresponding cookie. auth.RotateRefreshToken() already calls jsonutils.WriteError()
 					auth.SetAuthCookies(w, "", "", "user", cfg.AccessTokenDuration, cfg.RefreshTokenDuration)
-					http.Redirect(w, r, "/api/login", http.StatusSeeOther)
 					return
 				}
 
 				// 1.4 make a new JWT (access token) based on refresh token
 				newAccessToken, err := auth.MakeJWT(rotatedRefreshToken.UserID, "user", cfg.Secret, cfg.AccessTokenDuration)
 				if err != nil {
-					// this should probably not redirect anywhere and just cancel the whole ordeal - this is pretty fundamental
-					jsonutils.WriteError(w, http.StatusInternalServerError, err, "error making new JWT")
+					// if this fails, there is a problem with issueing access tokens in general, which is very fundamental
+					auth.SetAuthCookies(w, "", "", "user", cfg.AccessTokenDuration, cfg.RefreshTokenDuration)
+					jsonutils.WriteError(w, http.StatusInternalServerError, err, "error making new JWT (MakeJWT in AuthUserMiddleware)")
 					return
 				}
 
 				// 1.5 Set new cookies
 				auth.SetAuthCookies(w, newAccessToken, rotatedRefreshToken.Token, "user", cfg.AccessTokenDuration, cfg.RefreshTokenDuration)
 
-				// 1.6 retry same request (redirect to original path. note that this time we will have proper cookies so 2.2 should trigger)
-				http.Redirect(w, r, r.URL.Path, http.StatusSeeOther)
+				// 1.6 pass on to next handler
+				uid := rotatedRefreshToken.UserID.String()
+				ctx := r.Context()
+				ctx = context.WithValue(ctx, auth.UserIDContextKey, uid)
+				next.ServeHTTP(w, r.WithContext(ctx))
 				return
 			} else { // so if accessErr != nil && refreshErr != nil, meaning no cookie was found for either access or refresh token
+				// 1.7 pass on to next handler with explicitly empty authentication
 				ctx := r.Context()
 				ctx = context.WithValue(ctx, auth.UserIDContextKey, "") // this is to prevent an attacker sending a request without the cookie but with the UserIDContextKey manually set
 				next.ServeHTTP(w, r.WithContext(ctx))
@@ -89,9 +92,9 @@ func (cfg *ApiConfig) AuthUserMiddleware(next http.Handler) http.Handler {
 		// 2. if accessErr == nil ... so we can deal with a functioning access token
 		// first check if we have a refresh token
 		refreshTokenCookie, refreshErr := r.Cookie("user_refresh_token")
-		if refreshErr != nil {
+		if refreshErr != nil { // no refresh token cookie found
 			auth.SetAuthCookies(w, "", "", usertype, cfg.AccessTokenDuration, cfg.RefreshTokenDuration)
-			http.Redirect(w, r, "/api/login", http.StatusSeeOther)
+			jsonutils.WriteError(w, http.StatusUnauthorized, refreshErr, "access token but no refresh token found. Nulling auth cookies.")
 			return
 		}
 
@@ -101,21 +104,19 @@ func (cfg *ApiConfig) AuthUserMiddleware(next http.Handler) http.Handler {
 		if ut != usertype {
 			// unexpected state: access token usertype does not match access token cookie name > clear cookies and sent to login
 			jsonutils.WriteError(w, http.StatusBadRequest, errors.New("access token usertype does not match expectation from cookie name"), "access token usertype does not match cookie name")
-			http.Redirect(w, r, "/api/login", http.StatusSeeOther)
 			return
 		}
-		// 2.1.2 if the token is invalid auth.ValidateJWT will return an error
+		// 2.1.2 if the access token is invalid auth.ValidateJWT will return an error
 		if err != nil {
 			// 2.1.3 get the refresh token
 			rotatedRefreshToken, err := auth.RotateRefreshToken(cfg.DB, w, r, refreshTokenCookie)
 			if err != nil { // in other words: if we have a refresh token cookie but the corresponding token is not working
 				// if refresh token is broken, best to redirect to login
 				auth.SetAuthCookies(w, "", "", "user", cfg.AccessTokenDuration, cfg.RefreshTokenDuration)
-				http.Redirect(w, r, "/api/login", http.StatusSeeOther)
 				return
 			}
 
-			// 2.1.4 make a new JWT (access token) based on refresh token
+			// 2.1.4 no error at 2.1.3 means we have a valid refresh token > make a new access token based on refresh token
 			newAccessToken, err := auth.MakeJWT(rotatedRefreshToken.UserID, "user", cfg.Secret, cfg.AccessTokenDuration)
 			if err != nil {
 				// this should probably not redirect anywhere and just cancel the whole ordeal - this is pretty fundamental
@@ -127,20 +128,23 @@ func (cfg *ApiConfig) AuthUserMiddleware(next http.Handler) http.Handler {
 			auth.SetAuthCookies(w, newAccessToken, rotatedRefreshToken.Token, "user", cfg.AccessTokenDuration, cfg.RefreshTokenDuration)
 
 			// 2.1.6 retry same request (redirect to original path. note that this time we will have proper cookies so 2.2 should trigger)
-			http.Redirect(w, r, r.URL.Path, http.StatusSeeOther)
+			uid := rotatedRefreshToken.UserID.String()
+			ctx := r.Context()
+			ctx = context.WithValue(ctx, auth.UserIDContextKey, uid)
+			next.ServeHTTP(w, r.WithContext(ctx))
 			return
 
 		}
 
 		// 2.2 rotate refresh token
-		rotatedRefreshToken, err := auth.RotateRefreshToken(cfg.DB, w, r, refreshTokenCookie)
+		rotatedRefreshToken, err := auth.RotateRefreshToken(cfg.DB, w, r, refreshTokenCookie) // note that auth.RotateRefreshToken calls WriteError on its own
 		if err != nil {
 			if err == auth.ErrRefreshTokenInvalid {
 				// unexpected state: valid access token but invalid refresh token > reset both cookies and redirect to /api/login
 				auth.SetAuthCookies(w, "", "", "user", cfg.AccessTokenDuration, cfg.RefreshTokenDuration)
-				http.Redirect(w, r, "/api/login", http.StatusSeeOther)
 				return
 			} else { // bit redundant but for clarity
+				// should we panic here? probably not
 				return // in this case we had an error querying the database. Don't want to redirect because it indicates a much bigger problem.
 			}
 
@@ -162,58 +166,23 @@ func (cfg *ApiConfig) AuthUserMiddleware(next http.Handler) http.Handler {
 		user, err := cfg.DB.GetUserByID(r.Context(), userID)
 		if errors.Is(err, sql.ErrNoRows) { // unexpected state: a non-existing user is specified in the access token jwt
 			auth.SetAuthCookies(w, "", "", "user", cfg.AccessTokenDuration, cfg.RefreshTokenDuration)
-			http.Redirect(w, r, "/api/login", http.StatusSeeOther)
+			jsonutils.WriteError(w, http.StatusUnauthorized, err, "non-existing user specified in access token JWT. Note that this error should never occur.")
 			return
 		} else if err != nil {
+			auth.SetAuthCookies(w, "", "", "user", cfg.AccessTokenDuration, cfg.RefreshTokenDuration)
 			jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (GetUserByID in AuthUserMiddleware)")
 			return
 		}
 		if !user.IsActive { // NYI
-			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			auth.SetAuthCookies(w, "", "", "user", cfg.AccessTokenDuration, cfg.RefreshTokenDuration)
+			jsonutils.WriteJSON(w, http.StatusForbidden, "user account described in authentication cookies is not active")
+			return
 		}
 
 		// 3. modify context to take ID and pass into next handler
 		uid = userID.String()
 		ctx := r.Context()
 		ctx = context.WithValue(ctx, auth.UserIDContextKey, uid)
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
-}
-
-func (cfg *ApiConfig) AuthVisitorMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		/*
-			Middleware for visitor authentication. Significantly simpler than user authentication as visitors do not use refresh tokens (for now).
-			Returns a handler. As such, no error values are returned: instead we either redirect or write to log.
-		*/
-		// 0. init
-		const usertype string = "visitor"
-
-		// 1. retrieve visitor access cookie
-		accessTokenCookie, err := r.Cookie("visitor_access_token")
-		if err != nil {
-			// err means no cookie found under this name. So serve as though not a visitor.
-			next.ServeHTTP(w, r)
-			return
-		}
-
-		// 2. validate visitor JWT
-		visitorID, ut, err := auth.ValidateJWT(accessTokenCookie.Value, cfg.Secret)
-		if ut != usertype { // sanity check
-			// unexpected state: delete visitor cookie and pass
-			auth.SetAuthCookies(w, "", "", "visitor", 2*cfg.AccessTokenDuration, cfg.RefreshTokenDuration)
-		}
-		if err != nil { // I strongly doubt whether this is correct
-			if err == jwt.ErrTokenExpired {
-				// ? do I want something here?
-			}
-			next.ServeHTTP(w, r)
-			return
-		}
-
-		// 3. add to context and pass to next
-		ctx := r.Context()
-		ctx = context.WithValue(ctx, auth.VisitorIDContextKey, visitorID.String())
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
