@@ -78,9 +78,9 @@ func main() {
 	mux.HandleFunc("GET /api/purposes", apiCfg.HandlerGetPurposes)                                                           // ok no auth needed
 	mux.HandleFunc("GET /api/purposes/{purpose_id}", apiCfg.HandlerGetPurposesByID)                                          // NYI is this needed? Maybe GetPurposesByName instead?
 	//handler_servicelogs.go
-	mux.Handle("POST /api/servicelogs", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerPostServicelogs)))                // NYI
-	mux.Handle("PUT /api/servicelogs/{servicelog_id}", apiCfg.AuthUserMiddleware(http.HandlerFunc(api.HandlerPutServicelogsByID))) // NYI
-	mux.Handle("GET /api/servicelogs", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerGetServicelogs)))                  // NYI
+	mux.Handle("POST /api/servicelogs", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerPostServicelogs)))                   // NYI
+	mux.Handle("PUT /api/servicelogs/{servicelog_id}", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerPutServicelogsByID))) // NYI
+	mux.Handle("GET /api/servicelogs", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerGetServicelogs)))                     // NYI
 	//mux.HandleFunc("GET /api/servicelogs/{visitor_id}", apiCfg.HandlerGetServicelogsByVisitorID)                                   // NYI not convinced this is needed
 
 	/// register handlers from the admin package

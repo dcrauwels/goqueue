@@ -27,18 +27,14 @@ type VisitorsPutRequestParameters struct {
 }
 
 type VisitorsResponseParameters struct {
-	ID           uuid.UUID      `json:"id"`
-	CreatedAt    time.Time      `json:"created_at"`
-	UpdatedAt    time.Time      `json:"updated_at"`
-	WaitingSince time.Time      `json:"waiting_since"`
-	Name         sql.NullString `json:"name"`
-	PurposeID    uuid.UUID      `json:"purpose_id"`
-	Status       int32          `json:"status"`
-}
-
-type VisitorsPOSTResponseParameters struct {
-	VisitorsResponseParameters
-	VisitorAccessToken string `json:"visitor_access_token"`
+	ID                uuid.UUID      `json:"id"`
+	CreatedAt         time.Time      `json:"created_at"`
+	UpdatedAt         time.Time      `json:"updated_at"`
+	WaitingSince      time.Time      `json:"waiting_since"`
+	Name              sql.NullString `json:"name"`
+	PurposeID         uuid.UUID      `json:"purpose_id"`
+	Status            int32          `json:"status"`
+	DailyTicketNumber int32          `json:"daily_ticket_number"`
 }
 
 func (vrp *VisitorsResponseParameters) Populate(v database.Visitor) {
@@ -49,6 +45,7 @@ func (vrp *VisitorsResponseParameters) Populate(v database.Visitor) {
 	vrp.Name = v.Name
 	vrp.PurposeID = v.PurposeID
 	vrp.Status = v.Status
+	vrp.DailyTicketNumber = v.DailyTicketNumber
 }
 
 func (cfg *ApiConfig) HandlerPostVisitors(w http.ResponseWriter, r *http.Request) { // POST /api/visitors
@@ -74,28 +71,29 @@ func (cfg *ApiConfig) HandlerPostVisitors(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// 3. query DB: CreateVisitor
-	queryParams := database.CreateVisitorParams{
-		Name:      strutils.InitNullString(request.Name), // name is currently nullable.
-		PurposeID: purpose.ID,
-	}
-	createdVisitor, err := cfg.DB.CreateVisitor(r.Context(), queryParams)
+	// 3. query DB: UpdateTicketCounter
+	dtn, err := cfg.DB.UpdateTicketCounter(r.Context())
 	if err != nil {
-		jsonutils.WriteError(w, http.StatusInternalServerError, err, "could not query database to create visitor")
+		jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (UpdateTicketCounter in HandlerPostVisitors)")
 		return
 	}
 
-	// 4. make visitor access token
-	visitorAccessToken, err := auth.MakeJWT(createdVisitor.ID, "visitor", cfg.Secret, 120)
+	// 4. query DB: CreateVisitor
+	queryParams := database.CreateVisitorParams{
+		Name:              strutils.InitNullString(request.Name), // name is currently nullable.
+		PurposeID:         purpose.ID,
+		DailyTicketNumber: dtn,
+	}
+
+	createdVisitor, err := cfg.DB.CreateVisitor(r.Context(), queryParams)
 	if err != nil {
-		jsonutils.WriteError(w, http.StatusInternalServerError, err, "could not create access token")
+		jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (CreateVisitor in HandlerPostVisitors)")
 		return
 	}
 
 	// 5. return response 201
-	response := VisitorsPOSTResponseParameters{}
+	response := VisitorsResponseParameters{}
 	response.Populate(createdVisitor)
-	response.VisitorAccessToken = visitorAccessToken
 	jsonutils.WriteJSON(w, http.StatusCreated, response)
 }
 

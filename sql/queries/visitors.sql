@@ -1,5 +1,5 @@
 -- name: CreateVisitor :one
-INSERT INTO visitors (id, created_at, updated_at, waiting_since, name, purpose_id, status)
+INSERT INTO visitors (id, created_at, updated_at, waiting_since, name, purpose_id, status, daily_ticket_number)
 VALUES (
     gen_random_uuid(),
     NOW(),
@@ -7,7 +7,8 @@ VALUES (
     NOW(),
     $1,
     $2,
-    0 --status 
+    0, --status 
+    $3
 )
 RETURNING *;
 
@@ -55,3 +56,4 @@ UPDATE visitors
 SET status = $2, updated_at = NOW() --status 
 WHERE id = $1
 RETURNING *;
+

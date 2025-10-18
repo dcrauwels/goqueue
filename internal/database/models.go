@@ -46,6 +46,11 @@ type ServiceLog struct {
 	IsActive  bool
 }
 
+type TicketCounter struct {
+	Date             time.Time
+	LastTicketNumber int32
+}
+
 type User struct {
 	ID             uuid.UUID
 	CreatedAt      time.Time
@@ -59,11 +64,12 @@ type User struct {
 }
 
 type Visitor struct {
-	ID           uuid.UUID
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
-	WaitingSince time.Time
-	Name         sql.NullString
-	PurposeID    uuid.UUID
-	Status       int32
+	ID                uuid.UUID
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+	WaitingSince      time.Time
+	Name              sql.NullString
+	PurposeID         uuid.UUID
+	Status            int32
+	DailyTicketNumber int32
 }
