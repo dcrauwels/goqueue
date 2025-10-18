@@ -13,7 +13,7 @@ import (
 )
 
 const createVisitor = `-- name: CreateVisitor :one
-INSERT INTO visitors (id, created_at, updated_at, waiting_since, name, purpose_id, status)
+INSERT INTO visitors (id, created_at, updated_at, waiting_since, name, purpose_id, status, daily_ticket_number)
 VALUES (
     gen_random_uuid(),
     NOW(),
@@ -21,18 +21,20 @@ VALUES (
     NOW(),
     $1,
     $2,
-    0 --status 
+    0, --status 
+    $3
 )
 RETURNING id, created_at, updated_at, waiting_since, name, purpose_id, status, daily_ticket_number
 `
 
 type CreateVisitorParams struct {
-	Name      sql.NullString
-	PurposeID uuid.UUID
+	Name              sql.NullString
+	PurposeID         uuid.UUID
+	DailyTicketNumber int32
 }
 
 func (q *Queries) CreateVisitor(ctx context.Context, arg CreateVisitorParams) (Visitor, error) {
-	row := q.db.QueryRowContext(ctx, createVisitor, arg.Name, arg.PurposeID)
+	row := q.db.QueryRowContext(ctx, createVisitor, arg.Name, arg.PurposeID, arg.DailyTicketNumber)
 	var i Visitor
 	err := row.Scan(
 		&i.ID,

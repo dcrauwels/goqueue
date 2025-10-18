@@ -9,7 +9,7 @@ import (
 	"context"
 )
 
-const update_ticket_counter = `-- name: update_ticket_counter :one
+const updateTicketCounter = `-- name: UpdateTicketCounter :one
 INSERT INTO ticket_counter (counter_date, last_ticket_number)
 VALUES (CURRENT_DATE, 1)
 ON CONFLICT (counter_date)
@@ -18,8 +18,8 @@ DO UPDATE SET
 RETURNING last_ticket_number
 `
 
-func (q *Queries) update_ticket_counter(ctx context.Context) (int32, error) {
-	row := q.db.QueryRowContext(ctx, update_ticket_counter)
+func (q *Queries) UpdateTicketCounter(ctx context.Context) (int32, error) {
+	row := q.db.QueryRowContext(ctx, updateTicketCounter)
 	var last_ticket_number int32
 	err := row.Scan(&last_ticket_number)
 	return last_ticket_number, err

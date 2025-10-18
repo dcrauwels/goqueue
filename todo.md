@@ -37,7 +37,7 @@
 - [x] Write a migration for a ticket_counter table (two columns: date as primary key, last_ticket_number as int)
 - [x] Write a migration for the visitors table to take a daily_ticket_number (INT) column
 - [x] Write a query to update the ticket_counter table for today
-- [ ] Update the visitors handlers
+- [x] Update the visitors handlers (should only be for POST /api/visitors)
 
 
 ## Service log implementation
