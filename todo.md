@@ -28,15 +28,16 @@
 - [x] Shower thought: is visitor authentication through cookies even necessary? Currently, the only place it is used, is to send GET requests to /api/visitors/{visitor_id}. But is it really necessary? The alternative method is to simply give visitors the URI to their visitor status page and go from there. > yaba daba this is what I doo
 
 ## NanoID implementation
-- [ ] Migrate the following tables to include a 'public(_id' row: users, visitors, desks, service_logs, purposes.
+- [ ] Migrate the following tables to include a 'public_id' row: users, visitors, desks, service_logs, purposes.
 - [ ] Edit the following request structs to include a 'public_id' NanoID.
 - [ ] Follow down the road to fix the handler functions.
 - [ ] Think about where the public_id is and isn't relevant. (Frontend vs. backend API.)
 
 ## Visitor daily_ticket_number implementation
-- [ ] Write a migration for a ticket_counter table (two columns: date as primary key, last_ticket_number as int)
-- [ ] Write a migration for the visitors table to take a daily_ticket_number (INT) column
-- [ ] Write a query to update the ticket_counter table for today
+- [x] Write a migration for a ticket_counter table (two columns: date as primary key, last_ticket_number as int)
+- [x] Write a migration for the visitors table to take a daily_ticket_number (INT) column
+- [x] Write a query to update the ticket_counter table for today
+- [ ] Update the visitors handlers
 
 
 ## Service log implementation

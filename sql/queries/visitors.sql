@@ -55,3 +55,4 @@ UPDATE visitors
 SET status = $2, updated_at = NOW() --status 
 WHERE id = $1
 RETURNING *;
+

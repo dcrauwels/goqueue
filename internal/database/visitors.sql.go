@@ -23,7 +23,7 @@ VALUES (
     $2,
     0 --status 
 )
-RETURNING id, created_at, updated_at, waiting_since, name, purpose_id, status
+RETURNING id, created_at, updated_at, waiting_since, name, purpose_id, status, daily_ticket_number
 `
 
 type CreateVisitorParams struct {
@@ -42,12 +42,13 @@ func (q *Queries) CreateVisitor(ctx context.Context, arg CreateVisitorParams) (V
 		&i.Name,
 		&i.PurposeID,
 		&i.Status,
+		&i.DailyTicketNumber,
 	)
 	return i, err
 }
 
 const getVisitorByID = `-- name: GetVisitorByID :one
-SELECT id, created_at, updated_at, waiting_since, name, purpose_id, status FROM visitors
+SELECT id, created_at, updated_at, waiting_since, name, purpose_id, status, daily_ticket_number FROM visitors
 WHERE visitors.id = $1
 `
 
@@ -62,12 +63,13 @@ func (q *Queries) GetVisitorByID(ctx context.Context, id uuid.UUID) (Visitor, er
 		&i.Name,
 		&i.PurposeID,
 		&i.Status,
+		&i.DailyTicketNumber,
 	)
 	return i, err
 }
 
 const getVisitors = `-- name: GetVisitors :many
-SELECT id, created_at, updated_at, waiting_since, name, purpose_id, status FROM visitors
+SELECT id, created_at, updated_at, waiting_since, name, purpose_id, status, daily_ticket_number FROM visitors
 `
 
 func (q *Queries) GetVisitors(ctx context.Context) ([]Visitor, error) {
@@ -87,6 +89,7 @@ func (q *Queries) GetVisitors(ctx context.Context) ([]Visitor, error) {
 			&i.Name,
 			&i.PurposeID,
 			&i.Status,
+			&i.DailyTicketNumber,
 		); err != nil {
 			return nil, err
 		}
@@ -102,7 +105,7 @@ func (q *Queries) GetVisitors(ctx context.Context) ([]Visitor, error) {
 }
 
 const getVisitorsByPurpose = `-- name: GetVisitorsByPurpose :many
-SELECT id, created_at, updated_at, waiting_since, name, purpose_id, status FROM visitors
+SELECT id, created_at, updated_at, waiting_since, name, purpose_id, status, daily_ticket_number FROM visitors
 WHERE purpose_id = $1
 ORDER BY waiting_since ASC
 `
@@ -124,6 +127,7 @@ func (q *Queries) GetVisitorsByPurpose(ctx context.Context, purposeID uuid.UUID)
 			&i.Name,
 			&i.PurposeID,
 			&i.Status,
+			&i.DailyTicketNumber,
 		); err != nil {
 			return nil, err
 		}
@@ -139,7 +143,7 @@ func (q *Queries) GetVisitorsByPurpose(ctx context.Context, purposeID uuid.UUID)
 }
 
 const getVisitorsByPurposeStatus = `-- name: GetVisitorsByPurposeStatus :many
-SELECT id, created_at, updated_at, waiting_since, name, purpose_id, status FROM visitors
+SELECT id, created_at, updated_at, waiting_since, name, purpose_id, status, daily_ticket_number FROM visitors
 WHERE purpose_id = $1 AND status = $2
 ORDER BY waiting_since ASC
 `
@@ -166,6 +170,7 @@ func (q *Queries) GetVisitorsByPurposeStatus(ctx context.Context, arg GetVisitor
 			&i.Name,
 			&i.PurposeID,
 			&i.Status,
+			&i.DailyTicketNumber,
 		); err != nil {
 			return nil, err
 		}
@@ -181,7 +186,7 @@ func (q *Queries) GetVisitorsByPurposeStatus(ctx context.Context, arg GetVisitor
 }
 
 const getVisitorsByStatus = `-- name: GetVisitorsByStatus :many
-SELECT id, created_at, updated_at, waiting_since, name, purpose_id, status FROM visitors
+SELECT id, created_at, updated_at, waiting_since, name, purpose_id, status, daily_ticket_number FROM visitors
 WHERE status = $1 -- status
 ORDER BY waiting_since ASC
 `
@@ -203,6 +208,7 @@ func (q *Queries) GetVisitorsByStatus(ctx context.Context, status int32) ([]Visi
 			&i.Name,
 			&i.PurposeID,
 			&i.Status,
+			&i.DailyTicketNumber,
 		); err != nil {
 			return nil, err
 		}
@@ -218,7 +224,7 @@ func (q *Queries) GetVisitorsByStatus(ctx context.Context, status int32) ([]Visi
 }
 
 const getVisitorsForToday = `-- name: GetVisitorsForToday :many
-SELECT id, created_at, updated_at, waiting_since, name, purpose_id, status FROM visitors
+SELECT id, created_at, updated_at, waiting_since, name, purpose_id, status, daily_ticket_number FROM visitors
 WHERE waiting_since::date = CURRENT_DATE
 ORDER BY waiting_since ASC
 `
@@ -240,6 +246,7 @@ func (q *Queries) GetVisitorsForToday(ctx context.Context) ([]Visitor, error) {
 			&i.Name,
 			&i.PurposeID,
 			&i.Status,
+			&i.DailyTicketNumber,
 		); err != nil {
 			return nil, err
 		}
@@ -255,7 +262,7 @@ func (q *Queries) GetVisitorsForToday(ctx context.Context) ([]Visitor, error) {
 }
 
 const getWaitingVisitorsByPurpose = `-- name: GetWaitingVisitorsByPurpose :many
-SELECT id, created_at, updated_at, waiting_since, name, purpose_id, status FROM visitors
+SELECT id, created_at, updated_at, waiting_since, name, purpose_id, status, daily_ticket_number FROM visitors
 WHERE purpose_id = $1 AND status = 1 -- this whole status business is still not implemented correctly
 ORDER BY waiting_since ASC
 `
@@ -277,6 +284,7 @@ func (q *Queries) GetWaitingVisitorsByPurpose(ctx context.Context, purposeID uui
 			&i.Name,
 			&i.PurposeID,
 			&i.Status,
+			&i.DailyTicketNumber,
 		); err != nil {
 			return nil, err
 		}
@@ -295,7 +303,7 @@ const setVisitorByID = `-- name: SetVisitorByID :one
 UPDATE visitors
 SET name = $2, purpose_id = $3, status = $4, updated_at = NOW() -- status 
 WHERE id = $1
-RETURNING id, created_at, updated_at, waiting_since, name, purpose_id, status
+RETURNING id, created_at, updated_at, waiting_since, name, purpose_id, status, daily_ticket_number
 `
 
 type SetVisitorByIDParams struct {
@@ -321,6 +329,7 @@ func (q *Queries) SetVisitorByID(ctx context.Context, arg SetVisitorByIDParams) 
 		&i.Name,
 		&i.PurposeID,
 		&i.Status,
+		&i.DailyTicketNumber,
 	)
 	return i, err
 }
@@ -329,7 +338,7 @@ const setVisitorStatusByID = `-- name: SetVisitorStatusByID :one
 UPDATE visitors
 SET status = $2, updated_at = NOW() --status 
 WHERE id = $1
-RETURNING id, created_at, updated_at, waiting_since, name, purpose_id, status
+RETURNING id, created_at, updated_at, waiting_since, name, purpose_id, status, daily_ticket_number
 `
 
 type SetVisitorStatusByIDParams struct {
@@ -348,6 +357,7 @@ func (q *Queries) SetVisitorStatusByID(ctx context.Context, arg SetVisitorStatus
 		&i.Name,
 		&i.PurposeID,
 		&i.Status,
+		&i.DailyTicketNumber,
 	)
 	return i, err
 }
