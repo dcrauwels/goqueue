@@ -27,11 +27,25 @@
 - [x] Make sure that in api.HandlerLoginUser (in handler_auth.go) that if a POST request is sent to /api/login while an active refresh token is available for this user_id, that it is revoked. There is an edge case where this is possible. > should be redirected to /api/refresh instead
 - [x] Shower thought: is visitor authentication through cookies even necessary? Currently, the only place it is used, is to send GET requests to /api/visitors/{visitor_id}. But is it really necessary? The alternative method is to simply give visitors the URI to their visitor status page and go from there. > yaba daba this is what I doo
 
+## NanoID implementation
+- [ ] Migrate the following tables to include a 'public(_id' row: users, visitors, desks, service_logs, purposes.
+- [ ] Edit the following request structs to include a 'public_id' NanoID.
+- [ ] Follow down the road to fix the handler functions.
+- [ ] Think about where the public_id is and isn't relevant. (Frontend vs. backend API.)
+
+## Visitor daily_ticket_number implementation
+- [ ] Write a migration for a ticket_counter table (two columns: date as primary key, last_ticket_number as int)
+- [ ] Write a migration for the visitors table to take a daily_ticket_number (INT) column
+- [ ] Write a query to update the ticket_counter table for today
+
+
 ## Service log implementation
-- [ ] Define endpoints for /api/servicelogs. Probably POST, GET, PUT.
+- [x] Define endpoints for /api/servicelogs. Probably POST, GET, PUT.
+- [ ] Define a GET /api/visitors/{visitor_id}/status endpoint. This is meant for a visitor to check their own status ideally.
+- [ ] Define a /api/queue endpoint which takes GET requests and is meant for a screen to display all WAITING / CALLED / SERVING visitors.
 - [ ] Write handlers for all of the aforementioned endpoints.
-- [ ] We have the same authentication issue for visitors that we have for GET /api/visitors/{visitor_id}. Basically the question is: if a third party that isn't the visitor themselves knows the URI to the visitor status page and can get information from the service log, is that a problem? Does it matter if someone else can see visitors being called?
-- [ ] Why is it necessary again to have both a visitor and a service log implementation? Given that a visitor only goes in one direction: from waiting, to serving, to served, what does the log add?
+- [x] We have the same authentication issue for visitors that we have for GET /api/visitors/{visitor_id}. Basically the question is: if a third party that isn't the visitor themselves knows the URI to the visitor status page and can get information from the service log, is that a problem? Does it matter if someone else can see visitors being called? 
+- [x] Why is it necessary again to have both a visitor and a service log implementation? Given that a visitor only goes in one direction: from waiting, to serving, to served, what does the log add?
 
 # Nice to have
 - [x] Specify the different errors auth.ValidateJWT can spit out to match the reasons for throwing an error. (Token expired, invalid, etc.) > turns out the JWT package has these predefined.

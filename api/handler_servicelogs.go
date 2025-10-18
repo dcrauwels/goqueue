@@ -1,6 +1,7 @@
 package api
 
 import (
+	"net/http"
 	"time"
 
 	"github.com/dcrauwels/goqueue/internal/database"
@@ -40,3 +41,24 @@ type ServiceLog struct {
 	CalledAt  time.Time
 	IsActive  bool
 }
+
+// POST /api/servicelogs (user only)
+func (cfg *ApiConfig) HandlerPostServicelogs(w http.ResponseWriter, r *http.Request) {
+	// 1. Check auth
+	// 2. Read request
+	// 3. Query DB
+	// 4. Handle errors
+	// 5. Send response
+}
+
+// PUT /api/servicelogs/{servicelog_id} (user only)
+func (cfg *ApiConfig) HandlerPutServicelogsByID(w http.ResponseWriter, r *http.Request) {
+}
+
+// GET /api/servicelogs (user only)
+func (cfg *ApiConfig) HandlerGetServicelogs(w http.ResponseWriter, r *http.Request) {
+}
+
+// GET /api/servicelogs/{visitor_id} not convinced this is needed
+//func (cfg *ApiConfig) HandlerGetServicelogsByVisitorID(w http.ResponseWriter, r *http.Request) {
+//}
