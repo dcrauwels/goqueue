@@ -30,7 +30,7 @@
 ## NanoID implementation
 - [x] Think about where the public_id is and isn't relevant. (Frontend vs. backend API.) > both, UUID is only for database robustness
 - [x] Migrate the following tables to include a 'public_id' row: users, visitors, desks, service_logs, purposes, refresh_tokens.
-- [ ] Update the SQL queries to take public_id where relevant. Probably only the CreateX queries.
+- [x] Update the SQL queries to take public_id where relevant. Probably only the CreateX queries.
 - [x] Add SQL queries for finding a table row by public_id.
 - [ ] Add the nanoid package to dependencies.
 - [ ] Update the handlers to invoke the nanoid generator and the generated public_id into the updated SQL queries.
