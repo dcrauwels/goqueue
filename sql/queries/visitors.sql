@@ -1,20 +1,24 @@
 -- name: CreateVisitor :one
-INSERT INTO visitors (id, created_at, updated_at, waiting_since, name, purpose_id, status, daily_ticket_number)
+INSERT INTO visitors (id, public_id, created_at, updated_at, waiting_since, name, purpose_id, status, daily_ticket_number)
 VALUES (
     gen_random_uuid(),
-    NOW(),
-    NOW(),
-    NOW(),
     $1,
+    NOW(),
+    NOW(),
+    NOW(),
     $2,
+    $3,
     0, --status 
-    $3
+    $4
 )
 RETURNING *;
 
 -- name: GetVisitors :many
 SELECT * FROM visitors;
 
+-- name: GetVisitorsByPublicID :one
+SELECT * FROM visitors
+WHERE public_id = $1;
 
 -- name: GetVisitorByID :one
 SELECT * FROM visitors

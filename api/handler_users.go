@@ -29,6 +29,7 @@ type UsersAdminRequestParameters struct {
 
 type UsersResponseParameters struct {
 	ID        uuid.UUID `json:"id"`
+	PublicID  string    `json:"public_id"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 	Email     string    `json:"email"`
@@ -39,6 +40,7 @@ type UsersResponseParameters struct {
 
 func (urp *UsersResponseParameters) Populate(u database.User) {
 	urp.ID = u.ID
+	urp.PublicID = u.PublicID
 	urp.CreatedAt = u.CreatedAt
 	urp.UpdatedAt = u.UpdatedAt
 	urp.Email = u.Email

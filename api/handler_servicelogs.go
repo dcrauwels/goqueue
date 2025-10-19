@@ -8,38 +8,28 @@ import (
 	"github.com/google/uuid"
 )
 
-type ServicelogsRequestParameters struct {
-	VisitorID uuid.UUID
-	UserID    uuid.UUID
-	DeskID    uuid.UUID
+type ServicelogsPOSTRequestParameters struct {
+	VisitorID uuid.UUID `json:"visitor_id"`
+	UserID    uuid.UUID `json:"user_id"`
+	DeskID    uuid.UUID `json:"desk_id"`
 }
 
 type ServicelogsResponseParameters struct {
-	ID        uuid.UUID
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	VisitorID uuid.UUID
-	UserID    uuid.UUID
-	DeskID    uuid.UUID
-	CalledAt  time.Time
-	IsActive  bool
+	ID        uuid.UUID `json:"id"`
+	PublicID  string    `json:"public_id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	VisitorID uuid.UUID `json:"visitor_id"`
+	UserID    uuid.UUID `json:"user_id"`
+	DeskID    uuid.UUID `json:"desk_id"`
+	CalledAt  time.Time `json:"called_at"`
+	IsActive  bool      `json:"is_active"`
 }
 
 func (slrp *ServicelogsResponseParameters) Populate(sl database.ServiceLog) {
 	slrp.ID = sl.ID
 	slrp.CreatedAt = sl.CreatedAt
 
-}
-
-type ServiceLog struct {
-	ID        uuid.UUID
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	VisitorID uuid.UUID
-	UserID    uuid.UUID
-	DeskID    uuid.UUID
-	CalledAt  time.Time
-	IsActive  bool
 }
 
 // POST /api/servicelogs (user only)

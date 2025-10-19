@@ -21,6 +21,7 @@ type PurposesRequestParameters struct {
 
 type PurposesResponseParameters struct {
 	ID              uuid.UUID     `json:"id"`
+	PublicID        string        `json:"public_id"`
 	CreatedAt       time.Time     `json:"created_at"`
 	UpdatedAt       time.Time     `json:"updated_at"`
 	PurposeName     string        `json:"purpose_name"`
@@ -29,6 +30,7 @@ type PurposesResponseParameters struct {
 
 func (prp *PurposesResponseParameters) Populate(p database.Purpose) {
 	prp.ID = p.ID
+	prp.PublicID = p.PublicID
 	prp.CreatedAt = p.CreatedAt
 	prp.UpdatedAt = p.UpdatedAt
 	prp.PurposeName = p.PurposeName
@@ -46,7 +48,7 @@ func (cfg *ApiConfig) handlePurposeOperation(
 	dbQuery func() (database.Purpose, error), // function to execute the database query, so either cfg.DB.CreatePurpose() or cfg.DB.SetPurpose()
 ) {
 	/*
-		This function provides boilerplate for both PUT and POST operations to the /api/purposes endpoint.
+		This function provides a template for PUT and POST operations to the /api/purposes endpoint.
 	*/
 	// 1. auth for access: user, isadmin
 	user, err := auth.UserFromContext(w, r, cfg.DB)

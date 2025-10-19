@@ -21,6 +21,7 @@ type loginRequestParameters struct {
 
 type responseParameters struct {
 	ID               uuid.UUID `json:"id"`
+	PublicID         string    `json:"public_id"`
 	CreatedAt        time.Time `json:"created_at"`
 	UpdatedAt        time.Time `json:"updated_at"`
 	Email            string    `json:"email"`
@@ -155,6 +156,7 @@ func (cfg *ApiConfig) HandlerLoginUser(w http.ResponseWriter, r *http.Request) {
 	// 6. return access token to user
 	respParams := responseParameters{
 		ID:               user.ID,
+		PublicID:         user.PublicID,
 		CreatedAt:        user.CreatedAt,
 		UpdatedAt:        user.UpdatedAt,
 		Email:            user.Email,
@@ -234,6 +236,7 @@ func (cfg *ApiConfig) HandlerRefreshUser(w http.ResponseWriter, r *http.Request)
 	// 4. return access token to user > Not sure this is correct
 	respParams := responseParameters{
 		ID:               user.ID,
+		PublicID:         user.PublicID,
 		CreatedAt:        user.CreatedAt,
 		UpdatedAt:        user.UpdatedAt,
 		Email:            user.Email,
@@ -273,6 +276,7 @@ func (cfg *ApiConfig) HandlerLogoutUser(w http.ResponseWriter, r *http.Request) 
 	// 3.1 and send response with empty access token
 	respParams := responseParameters{
 		ID:               user.ID,
+		PublicID:         user.PublicID,
 		CreatedAt:        user.CreatedAt,
 		UpdatedAt:        user.UpdatedAt,
 		Email:            user.Email,

@@ -1,13 +1,18 @@
 -- name: CreatePurpose :one
-INSERT INTO purposes (id, created_at, updated_at, purpose_name, parent_purpose_id)
+INSERT INTO purposes (id, public_id, created_at, updated_at, purpose_name, parent_purpose_id)
 VALUES (
     gen_random_uuid(),
-    NOW(),
-    NOW(),
     $1,
-    $2
+    NOW(),
+    NOW(),
+    $2,
+    $3
 )
 RETURNING *;
+
+-- name: GetPurposesByPublicID :one
+SELECT * FROM purposes
+WHERE public_id = $1;
 
 -- name: GetPurposesByName :one
 SELECT * FROM purposes

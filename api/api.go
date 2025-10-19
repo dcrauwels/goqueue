@@ -155,7 +155,7 @@ func (cfg *ApiConfig) AuthUserMiddleware(next http.Handler) http.Handler {
 			Name:     "refresh_token",
 			Value:    rotatedRefreshToken.Token,
 			Path:     "/api/refresh",
-			Expires:  time.Now().Add(time.Duration(cfg.RefreshTokenDuration) * 24 * time.Hour), // one week for refresh tokens?
+			Expires:  time.Now().Add(time.Duration(cfg.RefreshTokenDuration) * 24 * time.Hour), // note that cfg.RefreshTokenDuration denotes duration in days
 			HttpOnly: true,
 			Secure:   true,
 			SameSite: http.SameSiteStrictMode,

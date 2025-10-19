@@ -16,6 +16,7 @@ type Desk struct {
 	Number      int32
 	Description sql.NullString
 	IsActive    bool
+	PublicID    string
 }
 
 type Purpose struct {
@@ -24,6 +25,7 @@ type Purpose struct {
 	UpdatedAt       time.Time
 	PurposeName     string
 	ParentPurposeID uuid.NullUUID
+	PublicID        string
 }
 
 type RefreshToken struct {
@@ -33,6 +35,7 @@ type RefreshToken struct {
 	UserID    uuid.UUID
 	ExpiresAt time.Time
 	RevokedAt sql.NullTime
+	PublicID  string
 }
 
 type ServiceLog struct {
@@ -44,6 +47,7 @@ type ServiceLog struct {
 	DeskID    uuid.UUID
 	CalledAt  time.Time
 	IsActive  bool
+	PublicID  string
 }
 
 type TicketCounter struct {
@@ -61,6 +65,7 @@ type User struct {
 	IsActive       bool
 	DeskID         uuid.NullUUID
 	FullName       string
+	PublicID       string
 }
 
 type Visitor struct {
@@ -72,4 +77,5 @@ type Visitor struct {
 	PurposeID         uuid.UUID
 	Status            int32
 	DailyTicketNumber int32
+	PublicID          string
 }
