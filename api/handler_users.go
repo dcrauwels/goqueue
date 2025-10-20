@@ -12,6 +12,7 @@ import (
 	"github.com/dcrauwels/goqueue/jsonutils"
 	"github.com/dcrauwels/goqueue/strutils"
 	"github.com/google/uuid"
+	gonanoid "github.com/matoous/go-nanoid/v2"
 )
 
 type UsersRequestParameters struct {
@@ -76,9 +77,10 @@ func ProcessUsersParameters(w http.ResponseWriter, request UsersRequestParameter
 	return hashedPassword, nil
 }
 
-func (cfg *ApiConfig) HandlerPostUsers(w http.ResponseWriter, r *http.Request) { // POST /api/users
+// POST /api/users (admin only)
+func (cfg *ApiConfig) HandlerPostUsers(w http.ResponseWriter, r *http.Request) {
 	// function to CREATE new user
-	// check for admin status in accessing user
+	// 1. check for admin status in accessing user
 	accessingUser, err := auth.UserFromContext(w, r, cfg.DB)
 	if err != nil {
 		return
@@ -87,7 +89,7 @@ func (cfg *ApiConfig) HandlerPostUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// get request data
+	// 2. get request data
 	decoder := json.NewDecoder(r.Body)
 	reqParams := UsersRequestParameters{}
 	err = decoder.Decode(&reqParams)
@@ -96,13 +98,16 @@ func (cfg *ApiConfig) HandlerPostUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// check request for validity & hash password
-	hashedPassword, err := ProcessUsersParameters(w, reqParams)
+	// 3. check request for validity & hash password
+	hashedPassword, err := ProcessUsersParameters(w, reqParams) // this function already calls jsonutils.WriteError, no need to do so here
 	if err != nil {
 		return
 	}
 
-	// run query CreateUser
+	// 4. generate publicid
+	pid, err := gonanoid.New(cfg.PublicIDLength)
+
+	// 5. run query CreateUser
 	queryParams := database.CreateUserParams{
 		Email:          reqParams.Email,
 		HashedPassword: hashedPassword,

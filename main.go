@@ -38,6 +38,12 @@ func main() {
 		log.Printf("Environment variable REFRESHTOKENDURATION not provided: %v", err)
 		panic(err)
 	}
+	os.LookupEnv()
+	publicIDLength, err := strconv.Atoi(os.Getenv("PUBLICIDLENGTH"))
+	if err != nil {
+		log.Printf("Environment variable PUBLICIDLENGTH not provided: %v", err)
+		panic(err)
+	}
 
 	apiCfg := api.ApiConfig{
 		DB:                   dbQueries,
@@ -45,6 +51,7 @@ func main() {
 		Env:                  os.Getenv("ENV"),
 		AccessTokenDuration:  accessTokenDuration,
 		RefreshTokenDuration: refreshTokenDuration,
+		PublicIDLength:       publicIDLength,
 	}
 
 	// servemux

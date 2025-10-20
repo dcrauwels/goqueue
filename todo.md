@@ -32,6 +32,8 @@
 - [x] Migrate the following tables to include a 'public_id' row: users, visitors, desks, service_logs, purposes, refresh_tokens.
 - [x] Update the SQL queries to take public_id where relevant. Probably only the CreateX queries.
 - [x] Add SQL queries for finding a table row by public_id.
+- [ ] Update the environment variable handling in main.go by writing a function that uses os.LookupEnv to more robustly handle errors in environment variable setting. 
+- [ ] Incorporate PUBLICIDLENGTH as an environment variable.
 - [ ] Add the nanoid package to dependencies.
 - [ ] Update the handlers to invoke the nanoid generator and the generated public_id into the updated SQL queries.
 - [ ] Follow down the road to fix the handler functions. ??
