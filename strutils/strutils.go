@@ -40,6 +40,7 @@ func GetIntegerEnvironmentVariable(s string) (int, error) {
 	var r int
 	ErrNoValueFound := errors.New("no environment value found for this key")
 	ErrValueNotNumeric := errors.New("the environment for this key cannot be converted to an integer")
+	ErrValueNegative := errors.New("negative or null environment values are not allowed")
 
 	envVar, ok := os.LookupEnv(s)
 	if !ok { // this means there was no value found for keystring s
@@ -49,6 +50,8 @@ func GetIntegerEnvironmentVariable(s string) (int, error) {
 	r, err := strconv.Atoi(envVar)
 	if err != nil { // this means the value passed into Atoi cannot be converted into an integer - i.e. it contains non-numeric characters
 		return r, ErrValueNotNumeric
+	} else if r <= 0 {
+		return r, ErrValueNegative
 	}
 
 	return r, nil

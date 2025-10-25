@@ -106,11 +106,17 @@ func (cfg *ApiConfig) HandlerPostUsers(w http.ResponseWriter, r *http.Request) {
 
 	// 4. generate publicid
 	pid, err := gonanoid.New(cfg.PublicIDLength)
+	if err != nil {
+		jsonutils.WriteError(w, http.StatusInternalServerError, err, "error generating nanoid (gonanoid.New in HandlerPostUsers)")
+		return
+	}
 
 	// 5. run query CreateUser
 	queryParams := database.CreateUserParams{
+		PublicID:       pid,
 		Email:          reqParams.Email,
 		HashedPassword: hashedPassword,
+		FullName:       reqParams.FullName,
 	}
 	createdUser, err := cfg.DB.CreateUser(r.Context(), queryParams)
 	if err != nil {
@@ -126,6 +132,7 @@ func (cfg *ApiConfig) HandlerPostUsers(w http.ResponseWriter, r *http.Request) {
 
 }
 
+// PUT /api/users
 func (cfg *ApiConfig) HandlerPutUsers(w http.ResponseWriter, r *http.Request) { // PUT /api/users
 	/*
 		Function to change own details for user. Only things a user can change about himself are email, password and fullname
@@ -177,8 +184,9 @@ func (cfg *ApiConfig) HandlerPutUsers(w http.ResponseWriter, r *http.Request) { 
 
 }
 
-func (cfg *ApiConfig) HandlerPutUsersByID(w http.ResponseWriter, r *http.Request) { // PUT /api/users/{user_id}
-	// function to UPDATE specific user by ID
+// PUT /api/users/{public_user_id}
+func (cfg *ApiConfig) HandlerPutUsersByID(w http.ResponseWriter, r *http.Request) {
+	// function to UPDATE specific user by public ID
 	// requires isadmin status from accessing user
 
 	// 1. retrieve accessing user
@@ -189,15 +197,14 @@ func (cfg *ApiConfig) HandlerPutUsersByID(w http.ResponseWriter, r *http.Request
 	}
 
 	// 2. retrieve target user from uri
-	req := r.PathValue("user_id")
-	userID, err := uuid.Parse(req)
-	if err != nil {
-		jsonutils.WriteError(w, http.StatusBadRequest, err, "endpoint is not a valid user ID")
+	pid := r.PathValue("public_user_id")
+	if len(pid) != cfg.PublicIDLength {
+		jsonutils.WriteError(w, http.StatusBadRequest, errors.New("incorrect public ID length"), "invalid public ID length provided in endpoint")
 		return
 	}
 
 	// 3. retrieve request data
-	request := UsersAdminRequestParameters{} // note that we will be filling out nearly all other values so
+	request := UsersAdminRequestParameters{}
 	decoder := json.NewDecoder(r.Body)
 	err = decoder.Decode(&request)
 	if err != nil {
@@ -207,7 +214,7 @@ func (cfg *ApiConfig) HandlerPutUsersByID(w http.ResponseWriter, r *http.Request
 
 	// 4. auth: either IsAdmin or userID match
 	if !accessingUser.IsAdmin {
-		if accessingUser.ID != userID {
+		if accessingUser.PublicID != pid {
 			jsonutils.WriteError(w, http.StatusForbidden, errors.New("user not authorized to send a PUT request to this endpoint"), "this user account is not authorized to send a PUT request to this endpoint")
 			return
 		} else if (request.IsAdmin && !accessingUser.IsAdmin) || (request.IsActive != accessingUser.IsActive) { // non-admins cannot set themselves to admin obviously or (de)activate themselves
@@ -217,14 +224,14 @@ func (cfg *ApiConfig) HandlerPutUsersByID(w http.ResponseWriter, r *http.Request
 	}
 
 	// 5. run query
-	queryParams := database.SetUserByIDParams{
-		ID:       userID,
+	queryParams := database.SetUserByPublicIDParams{
+		PublicID: pid,
 		Email:    request.Email,
 		FullName: request.FullName,
 		IsAdmin:  request.IsAdmin,
 		IsActive: request.IsActive,
 	}
-	updatedUser, err := cfg.DB.SetUserByID(r.Context(), queryParams)
+	updatedUser, err := cfg.DB.SetUserByPublicID(r.Context(), queryParams)
 	if errors.Is(err, sql.ErrNoRows) {
 		jsonutils.WriteError(w, http.StatusNotFound, err, "user not found")
 		return
@@ -271,7 +278,7 @@ func (cfg *ApiConfig) HandlerGetUsers(w http.ResponseWriter, r *http.Request) { 
 	jsonutils.WriteJSON(w, http.StatusOK, response)
 }
 
-func (cfg *ApiConfig) HandlerGetUsersByID(w http.ResponseWriter, r *http.Request) { // GET /api/users/{user_id}
+func (cfg *ApiConfig) HandlerGetUsersByID(w http.ResponseWriter, r *http.Request) { // GET /api/users/{public_user_id}
 	/*
 		Handler function to retrieve a full user (including is_admin) based on the UUID. This needs to be accessible to all clients, even unauthenticated
 		ones, because a visitor needs to be able to see who is calling him. I might decide to change this at a later date though.
@@ -292,24 +299,24 @@ func (cfg *ApiConfig) HandlerGetUsersByID(w http.ResponseWriter, r *http.Request
 	}
 
 	// 2. get user ID from request uri
-	req := r.PathValue("user_id")
+	pid := r.PathValue("public_user_id")
 
 	// 3. check for validity
-	userID, err := uuid.Parse(req)
-	if err != nil {
-		jsonutils.WriteError(w, http.StatusBadRequest, err, "endpoint is not a valid user ID")
+	if len(pid) != cfg.PublicIDLength {
+		jsonutils.WriteError(w, http.StatusBadRequest, errors.New("incorrect public ID length"), "invalid public ID length provided in endpoint")
 		return
 	}
 
 	// 4. run query
-	user, err := cfg.GetUserByID(r.Context(), userID)
+	user, err := cfg.DB.GetUserByPublicID(r.Context(), pid)
 	if errors.Is(err, sql.ErrNoRows) {
 		jsonutils.WriteError(w, http.StatusNotFound, err, "user not found")
 		return
 	} else if err != nil {
-		jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database")
+		jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database(GetUserByPublicID in HandlerGetUsersByID)")
 		return
 	}
+
 	// 5. write response
 	response := UsersResponseParameters{}
 	response.Populate(user)

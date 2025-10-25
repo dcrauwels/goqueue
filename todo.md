@@ -57,5 +57,6 @@
 # Nice to have
 - [x] Specify the different errors auth.ValidateJWT can spit out to match the reasons for throwing an error. (Token expired, invalid, etc.) > turns out the JWT package has these predefined.
 - [ ] Decide on whether to keep PUT /api/users as well as PUT /api/users/{user_id} or delete the former.
+- [ ] Currently GET /api/users requires admin status. Is that actually necessary?
 
 # Other

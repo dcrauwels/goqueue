@@ -60,11 +60,11 @@ func main() {
 	//handler_status.go
 	mux.HandleFunc("GET /api/healthz", apiCfg.ReadinessHandler) // ok
 	//handler_users.go
-	mux.Handle("POST /api/users", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerPostUsers)))             // ok
-	mux.Handle("PUT /api/users", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerPutUsers)))               // ok
-	mux.Handle("PUT /api/users/{user_id}", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerPutUsersByID))) // ok
-	mux.Handle("GET /api/users", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerGetUsers)))               // ok
-	mux.HandleFunc("GET /api/users/{user_id}", apiCfg.HandlerGetUsersByID)                                          // ok
+	mux.Handle("POST /api/users", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerPostUsers)))                    // ok
+	mux.Handle("PUT /api/users", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerPutUsers)))                      // ok
+	mux.Handle("PUT /api/users/{public_user_id}", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerPutUsersByID))) // ok
+	mux.Handle("GET /api/users", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerGetUsers)))                      // ok
+	mux.HandleFunc("GET /api/users/{public_user_id}", apiCfg.HandlerGetUsersByID)                                          // ok
 	//mux.HandleFunc("DELETE /api/users", apiCfg.HandlerDeleteUsers) NYI do I even want this
 	//handler_auth.go
 	mux.HandleFunc("POST /api/login", apiCfg.HandlerLoginUser)

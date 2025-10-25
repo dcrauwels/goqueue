@@ -16,7 +16,7 @@ RETURNING *;
 -- name: GetUsers :many
 SELECT * FROM users;
 
--- name: GetUsersByPublicID :one
+-- name: GetUserByPublicID :one
 SELECT * FROM users
 WHERE public_id = $1;
 
@@ -28,10 +28,10 @@ WHERE email = $1;
 SELECT * FROM users
 where id = $1;
 
--- name: SetUserByID :one
+-- name: SetUserByPublicID :one
 UPDATE users
 SET email = $2, full_name = $3, is_admin = $4, is_active = $5, updated_at = NOW()
-WHERE id = $1
+WHERE public_id = $1
 returning *;
 
 -- name: SetUserEmailPasswordByID :one

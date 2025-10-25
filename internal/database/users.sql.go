@@ -127,6 +127,29 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 	return i, err
 }
 
+const getUserByPublicID = `-- name: GetUserByPublicID :one
+SELECT id, created_at, updated_at, email, hashed_password, is_admin, is_active, desk_id, full_name, public_id FROM users
+WHERE public_id = $1
+`
+
+func (q *Queries) GetUserByPublicID(ctx context.Context, publicID string) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserByPublicID, publicID)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Email,
+		&i.HashedPassword,
+		&i.IsAdmin,
+		&i.IsActive,
+		&i.DeskID,
+		&i.FullName,
+		&i.PublicID,
+	)
+	return i, err
+}
+
 const getUsers = `-- name: GetUsers :many
 SELECT id, created_at, updated_at, email, hashed_password, is_admin, is_active, desk_id, full_name, public_id FROM users
 `
@@ -165,47 +188,24 @@ func (q *Queries) GetUsers(ctx context.Context) ([]User, error) {
 	return items, nil
 }
 
-const getUsersByPublicID = `-- name: GetUsersByPublicID :one
-SELECT id, created_at, updated_at, email, hashed_password, is_admin, is_active, desk_id, full_name, public_id FROM users
-WHERE public_id = $1
-`
-
-func (q *Queries) GetUsersByPublicID(ctx context.Context, publicID string) (User, error) {
-	row := q.db.QueryRowContext(ctx, getUsersByPublicID, publicID)
-	var i User
-	err := row.Scan(
-		&i.ID,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.Email,
-		&i.HashedPassword,
-		&i.IsAdmin,
-		&i.IsActive,
-		&i.DeskID,
-		&i.FullName,
-		&i.PublicID,
-	)
-	return i, err
-}
-
-const setUserByID = `-- name: SetUserByID :one
+const setUserByPublicID = `-- name: SetUserByPublicID :one
 UPDATE users
 SET email = $2, full_name = $3, is_admin = $4, is_active = $5, updated_at = NOW()
-WHERE id = $1
+WHERE public_id = $1
 returning id, created_at, updated_at, email, hashed_password, is_admin, is_active, desk_id, full_name, public_id
 `
 
-type SetUserByIDParams struct {
-	ID       uuid.UUID
+type SetUserByPublicIDParams struct {
+	PublicID string
 	Email    string
 	FullName string
 	IsAdmin  bool
 	IsActive bool
 }
 
-func (q *Queries) SetUserByID(ctx context.Context, arg SetUserByIDParams) (User, error) {
-	row := q.db.QueryRowContext(ctx, setUserByID,
-		arg.ID,
+func (q *Queries) SetUserByPublicID(ctx context.Context, arg SetUserByPublicIDParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, setUserByPublicID,
+		arg.PublicID,
 		arg.Email,
 		arg.FullName,
 		arg.IsAdmin,
