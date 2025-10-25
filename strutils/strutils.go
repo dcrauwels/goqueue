@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"errors"
 	"net/mail"
+	"os"
+	"strconv"
 	"unicode"
 )
 
@@ -31,4 +33,23 @@ func InitNullString(s string) sql.NullString {
 		Valid:  true,
 	}
 	return r
+}
+
+func GetIntegerEnvironmentVariable(s string) (int, error) {
+	/* Retrieves an environment value using os.LookupEnv, then converts it to an integer. Uses os.LookupEnv and */
+	var r int
+	ErrNoValueFound := errors.New("no environment value found for this key")
+	ErrValueNotNumeric := errors.New("the environment for this key cannot be converted to an integer")
+
+	envVar, ok := os.LookupEnv(s)
+	if !ok { // this means there was no value found for keystring s
+		return r, ErrNoValueFound
+	}
+
+	r, err := strconv.Atoi(envVar)
+	if err != nil { // this means the value passed into Atoi cannot be converted into an integer - i.e. it contains non-numeric characters
+		return r, ErrValueNotNumeric
+	}
+
+	return r, nil
 }

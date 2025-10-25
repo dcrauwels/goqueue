@@ -5,12 +5,12 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/dcrauwels/goqueue/admin"
 	"github.com/dcrauwels/goqueue/api"
 	"github.com/dcrauwels/goqueue/internal/database"
+	"github.com/dcrauwels/goqueue/strutils"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
@@ -28,18 +28,17 @@ func main() {
 	dbQueries := database.New(db)
 
 	// set up ApiConfig
-	accessTokenDuration, err := strconv.Atoi(os.Getenv("ACCESSTOKENDURATION"))
+	accessTokenDuration, err := strutils.GetIntegerEnvironmentVariable("ACCESSTOKENDURATION")
 	if err != nil {
 		log.Printf("Environment variable ACCESSTOKENDURATION not provided: %v", err)
 		panic(err)
 	}
-	refreshTokenDuration, err := strconv.Atoi(os.Getenv("REFRESHTOKENDURATION"))
+	refreshTokenDuration, err := strutils.GetIntegerEnvironmentVariable("REFRESHTOKENDURATION")
 	if err != nil {
 		log.Printf("Environment variable REFRESHTOKENDURATION not provided: %v", err)
 		panic(err)
 	}
-	os.LookupEnv()
-	publicIDLength, err := strconv.Atoi(os.Getenv("PUBLICIDLENGTH"))
+	publicIDLength, err := strutils.GetIntegerEnvironmentVariable("PUBLICIDLENGTH")
 	if err != nil {
 		log.Printf("Environment variable PUBLICIDLENGTH not provided: %v", err)
 		panic(err)
