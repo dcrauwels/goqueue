@@ -12,7 +12,6 @@ import (
 	"github.com/dcrauwels/goqueue/jsonutils"
 	"github.com/dcrauwels/goqueue/strutils"
 	"github.com/google/uuid"
-	gonanoid "github.com/matoous/go-nanoid/v2"
 )
 
 type UsersRequestParameters struct {
@@ -105,7 +104,7 @@ func (cfg *ApiConfig) HandlerPostUsers(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 4. generate publicid
-	pid, err := gonanoid.New(cfg.PublicIDLength)
+	pid, err := nanoid.New(cfg.PublicIDLength)
 	if err != nil {
 		jsonutils.WriteError(w, http.StatusInternalServerError, err, "error generating nanoid (gonanoid.New in HandlerPostUsers)")
 		return

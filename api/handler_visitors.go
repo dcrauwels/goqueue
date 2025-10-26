@@ -28,6 +28,7 @@ type VisitorsPutRequestParameters struct {
 
 type VisitorsResponseParameters struct {
 	ID                uuid.UUID      `json:"id"`
+	PublicID          string         `json:"public_id"`
 	CreatedAt         time.Time      `json:"created_at"`
 	UpdatedAt         time.Time      `json:"updated_at"`
 	WaitingSince      time.Time      `json:"waiting_since"`
@@ -39,6 +40,7 @@ type VisitorsResponseParameters struct {
 
 func (vrp *VisitorsResponseParameters) Populate(v database.Visitor) {
 	vrp.ID = v.ID
+	vrp.PublicID = v.PublicID
 	vrp.CreatedAt = v.CreatedAt
 	vrp.UpdatedAt = v.UpdatedAt
 	vrp.WaitingSince = v.WaitingSince
@@ -48,10 +50,11 @@ func (vrp *VisitorsResponseParameters) Populate(v database.Visitor) {
 	vrp.DailyTicketNumber = v.DailyTicketNumber
 }
 
+// POST /api/visitors no auth required
 func (cfg *ApiConfig) HandlerPostVisitors(w http.ResponseWriter, r *http.Request) { // POST /api/visitors
-	// function for sending a POST request to CREATE a single visitor from scratch
-	// in context the visitor accesses a website, enters his name and purpose and gets a number
-	//
+	/* function for sending a POST request to CREATE a single visitor from scratch
+	in context the visitor accesses a website, enters his name and purpose and gets a number*/
+
 	// 1. get request data: name, purpose
 	decoder := json.NewDecoder(r.Body)
 	request := VisitorsPostRequestParameters{}
@@ -67,7 +70,7 @@ func (cfg *ApiConfig) HandlerPostVisitors(w http.ResponseWriter, r *http.Request
 		jsonutils.WriteError(w, http.StatusNotFound, err, "purpose not found in database, please register first")
 		return
 	} else if err != nil {
-		jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (GetPurposesByName)")
+		jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (GetPurposesByNam in HandlerPostVisitors)")
 		return
 	}
 
@@ -78,8 +81,12 @@ func (cfg *ApiConfig) HandlerPostVisitors(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	// 4. create public ID
+	pid := cfg.PublicIDGenerator()
+
 	// 4. query DB: CreateVisitor
 	queryParams := database.CreateVisitorParams{
+		PublicID:          pid,
 		Name:              strutils.InitNullString(request.Name), // name is currently nullable.
 		PurposeID:         purpose.ID,
 		DailyTicketNumber: dtn,

@@ -11,6 +11,7 @@ import (
 	"github.com/dcrauwels/goqueue/api"
 	"github.com/dcrauwels/goqueue/internal/database"
 	"github.com/dcrauwels/goqueue/strutils"
+	"github.com/jaevor/go-nanoid"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
@@ -38,11 +39,13 @@ func main() {
 		log.Printf("Environment variable REFRESHTOKENDURATION not provided: %v", err)
 		panic(err)
 	}
+
 	publicIDLength, err := strutils.GetIntegerEnvironmentVariable("PUBLICIDLENGTH")
 	if err != nil {
 		log.Printf("Environment variable PUBLICIDLENGTH not provided: %v", err)
 		panic(err)
 	}
+	pidGenerator := 
 
 	apiCfg := api.ApiConfig{
 		DB:                   dbQueries,
@@ -50,7 +53,7 @@ func main() {
 		Env:                  os.Getenv("ENV"),
 		AccessTokenDuration:  accessTokenDuration,
 		RefreshTokenDuration: refreshTokenDuration,
-		PublicIDLength:       publicIDLength,
+		PublicIDGenerator:    nanoid.Standard(publicIDLength),
 	}
 
 	// servemux

@@ -10,4 +10,4 @@ require (
 	golang.org/x/crypto v0.37.0
 )
 
-require github.com/matoous/go-nanoid/v2 v2.1.0 // indirect
+require github.com/jaevor/go-nanoid v1.4.0 // indirect
