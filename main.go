@@ -45,7 +45,11 @@ func main() {
 		log.Printf("Environment variable PUBLICIDLENGTH not provided: %v", err)
 		panic(err)
 	}
-	pidGenerator := 
+	pidGenerator, err := nanoid.Standard(publicIDLength)
+	if err != nil {
+		log.Printf("public ID length not between 2 and 255: %v", err)
+		panic(err)
+	}
 
 	apiCfg := api.ApiConfig{
 		DB:                   dbQueries,
@@ -53,7 +57,7 @@ func main() {
 		Env:                  os.Getenv("ENV"),
 		AccessTokenDuration:  accessTokenDuration,
 		RefreshTokenDuration: refreshTokenDuration,
-		PublicIDGenerator:    nanoid.Standard(publicIDLength),
+		PublicIDGenerator:    pidGenerator,
 	}
 
 	// servemux
