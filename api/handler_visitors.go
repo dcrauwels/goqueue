@@ -21,6 +21,7 @@ type VisitorsPostRequestParameters struct {
 }
 
 type VisitorsPutRequestParameters struct {
+	PublicID  string    `json:"public_id"`
 	Name      string    `json:"name"`
 	PurposeID uuid.UUID `json:"purpose_id"`
 	Status    int32     `json:"status"`
@@ -104,7 +105,7 @@ func (cfg *ApiConfig) HandlerPostVisitors(w http.ResponseWriter, r *http.Request
 	jsonutils.WriteJSON(w, http.StatusCreated, response)
 }
 
-func (cfg *ApiConfig) HandlerPutVisitorsByID(w http.ResponseWriter, r *http.Request) { // PUT /api/visitors/{visitor_id}
+func (cfg *ApiConfig) HandlerPutVisitorsByID(w http.ResponseWriter, r *http.Request) { // PUT /api/visitors/{public_visitor_id}
 	/*
 		Handler function for dealing with PUT requests to the /api/visitors/{visitor_id} endpoint.
 		Can be accessed only by users. While one can imagine cases where visitors want to edit their name
@@ -112,15 +113,10 @@ func (cfg *ApiConfig) HandlerPutVisitorsByID(w http.ResponseWriter, r *http.Requ
 	*/
 
 	// 1. get target visitor from URI
-	req := r.PathValue("visitor_id")
-	visitorID, err := uuid.Parse(req)
-	if err != nil {
-		jsonutils.WriteError(w, http.StatusBadRequest, err, "endpoint is not a valid user ID")
-		return
-	}
+	pvid := r.PathValue("public_visitor_id")
 
 	// 2. get user authentication from context
-	_, err = auth.UserFromContext(w, r, cfg.DB) // I don't need information about the user itself, just whether a user ID is present in the request context.
+	_, err := auth.UserFromContext(w, r, cfg.DB) // I don't need information about the user itself, just whether a user ID is present in the request context.
 	if err != nil {
 		jsonutils.WriteError(w, http.StatusUnauthorized, err, "user authentication required to access PUT /api/visitors")
 		return
@@ -134,18 +130,16 @@ func (cfg *ApiConfig) HandlerPutVisitorsByID(w http.ResponseWriter, r *http.Requ
 		jsonutils.WriteError(w, http.StatusBadRequest, err, "JSON formatting invalid")
 		return
 	}
+	request.PublicID = pvid
 
-	// 4. validate request? This would have to do with the range of possible statuses. NYI
-	// No need to validate purpose: running the SetVisitorByID query with an invalid purposeID will throw an SQL error anyway.
-
-	// 5. run query
-	queryParams := database.SetVisitorByIDParams{
-		ID:        visitorID,
+	// 4. run query
+	queryParams := database.SetVisitorByPublicIDParams{
+		PublicID:  request.PublicID,
 		Name:      strutils.InitNullString(request.Name),
 		PurposeID: request.PurposeID,
 		Status:    request.Status,
 	}
-	updatedVisitor, err := cfg.DB.SetVisitorByID(r.Context(), queryParams)
+	updatedVisitor, err := cfg.DB.SetVisitorByPublicID(r.Context(), queryParams)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			jsonutils.WriteError(w, http.StatusNotFound, err, "updated visitor does not exist in database")
@@ -161,10 +155,10 @@ func (cfg *ApiConfig) HandlerPutVisitorsByID(w http.ResponseWriter, r *http.Requ
 	response.Populate(updatedVisitor)
 
 	jsonutils.WriteJSON(w, http.StatusOK, response)
-
 }
 
 func (cfg *ApiConfig) HandlerGetVisitors(w http.ResponseWriter, r *http.Request) { // GET /api/visitors
+	// only accessible to logged in users
 	// 1. get user authentication from request context
 	_, err := auth.UserFromContext(w, r, cfg.DB) // not interested in actual information about the user
 	if err != nil {
@@ -187,13 +181,6 @@ func (cfg *ApiConfig) HandlerGetVisitors(w http.ResponseWriter, r *http.Request)
 	status := int32(status64) // cast as int32 as the SQL query parameter structs take this
 	// 2.2 check status for validity
 	// NYI
-
-	// 2.3 parse purpose QP as UUID
-	purpose, err := uuid.Parse(queryPurpose)
-	if err != nil {
-		jsonutils.WriteError(w, http.StatusBadRequest, err, "query parameter 'purpose' only takes UUID values")
-		return
-	}
 
 	// 3. query database
 	switch {

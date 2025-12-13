@@ -58,6 +58,7 @@ func main() {
 		AccessTokenDuration:  accessTokenDuration,
 		RefreshTokenDuration: refreshTokenDuration,
 		PublicIDGenerator:    pidGenerator,
+		PublicIDLength:       publicIDLength,
 	}
 
 	// servemux
@@ -82,9 +83,9 @@ func main() {
 	mux.Handle("POST /api/revoke/{user_id}", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerRevokeRefreshToken))) // ok
 	//handler_visitors.go
 	mux.HandleFunc("POST /api/visitors", apiCfg.HandlerPostVisitors)
-	mux.Handle("PUT /api/visitors/{visitor_id}", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerPutVisitorsByID))) // ok
-	mux.Handle("GET /api/visitors", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerGetVisitors)))                  // ok
-	mux.Handle("GET /api/visitors/{visitor_id}", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerGetVisitorsByID))) // ok
+	mux.Handle("PUT /api/visitors/{public_visitor_id}", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerPutVisitorsByID))) // ok
+	mux.Handle("GET /api/visitors", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerGetVisitors)))                         // ok
+	mux.Handle("GET /api/visitors/{public_visitor_id}", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerGetVisitorsByID))) // ok
 	//handler_purposes.go
 	mux.Handle("POST /api/purposes", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerPostPurposes)))                // ok
 	mux.Handle("PUT /api/purposes/{purpose_id}", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerPutPurposesByID))) // ok

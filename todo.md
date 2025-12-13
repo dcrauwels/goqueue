@@ -17,6 +17,10 @@
 - [x] Currently there are no checks for user.IsActive. This needs to either go in AuthUserMiddleware or in all of the individual user authentication checks in handlers. The bottom line is: do we want to allow a user to present an access / refresh token for an inactive account and get that ID added to their context? > No, we don't, so it should be blocked at the AuthUserMiddleware level, where we clear the cookie, throw a 401 Unauthorized error, clear cookies and send them to login. (Also see previous todo.)
 - [ ] What range of statuses will be allowed? There are multiple NYI's for this, mostly in auth_visitors.go.
 
+## GET /api/visitors query parameters
+- [ ] At least for the GET /api/visitors endpoint, we have real query parameters. E.g. GET /api/visitors?purpose=fun. I don't think these are implemented properly: they should be optional, in the sense that GET /api/visitors should just return ALL visitors, but I believe it only works right now if both query parameters are called, e.g. GET /api/visitors?purpose=&status=.
+- [ ] Filtering by date should be possible.
+
 ## Cookie authentication implementation
 - [x] Unify the access token expiration timer through an environment variable stored in cfg (tough)
 - [x] Same for the refresh token expiration timer
@@ -32,10 +36,18 @@
 - [x] Migrate the following tables to include a 'public_id' row: users, visitors, desks, service_logs, purposes, refresh_tokens.
 - [x] Update the SQL queries to take public_id where relevant. Probably only the CreateX queries.
 - [x] Add SQL queries for finding a table row by public_id.
-- [ ] Update the environment variable handling in main.go by writing a function that uses os.LookupEnv to more robustly handle errors in environment variable setting. 
-- [ ] Incorporate PUBLICIDLENGTH as an environment variable.
-- [ ] Add the nanoid package to dependencies.
-- [ ] Update the handlers to invoke the nanoid generator and the generated public_id into the updated SQL queries.
+- [x] Update the environment variable handling in main.go by writing a function that uses os.LookupEnv to more robustly handle errors in environment variable setting. 
+- [x] Incorporate PUBLICIDLENGTH as an environment variable.
+- [x] Add the nanoid package to dependencies in readme.md.
+- [?] Update the handlers to invoke the nanoid generator and the pass generated public_id into the updated SQL queries.
+- [?] Update the handlers to have the queryparameters and responseparameter structs include public_ids.
+- [x] POST & PUT & GET users
+- [ ] POST & PUT & GET visitors
+- [ ] POST & PUT desks
+- [ ] POST & PUT refresh_tokens
+- [ ] POST & PUT purposes
+- [ ] POST & PUT service_logs
+- [ ] POST & PUT users
 - [ ] Follow down the road to fix the handler functions. ??
 
 

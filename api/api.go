@@ -20,6 +20,7 @@ type ApiConfig struct {
 	AccessTokenDuration  int
 	RefreshTokenDuration int
 	PublicIDGenerator    func() string
+	PublicIDLength       int
 }
 
 func (cfg *ApiConfig) GetUserByID(ctx context.Context, id uuid.UUID) (database.User, error) {

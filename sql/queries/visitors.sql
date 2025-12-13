@@ -55,6 +55,12 @@ SET name = $2, purpose_id = $3, status = $4, updated_at = NOW() -- status
 WHERE id = $1
 RETURNING *;
 
+-- name: SetVisitorByPublicID :one
+UPDATE visitors
+SET name = $2, purpose_id = $3, status = $4, updated_at = NOW() -- status
+WHERE public_id = $1
+RETURNING *;
+
 -- name: SetVisitorStatusByID :one
 UPDATE visitors
 SET status = $2, updated_at = NOW() --status 

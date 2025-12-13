@@ -14,13 +14,13 @@ import (
 	"github.com/google/uuid"
 )
 
-type UsersRequestParameters struct {
+type UsersPOSTRequestParameters struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 	FullName string `json:"full_name"`
 }
 
-type UsersAdminRequestParameters struct {
+type UsersPOSTAdminRequestParameters struct {
 	Email    string `json:"email"`
 	FullName string `json:"full_name"`
 	IsAdmin  bool   `json:"is_admin"`
@@ -49,7 +49,7 @@ func (urp *UsersResponseParameters) Populate(u database.User) {
 	urp.IsActive = u.IsActive
 }
 
-func ProcessUsersParameters(w http.ResponseWriter, request UsersRequestParameters) (string, error) {
+func ProcessUsersParameters(w http.ResponseWriter, request UsersPOSTRequestParameters) (string, error) {
 	/*
 		This function checks if the parameters in request (email, password and full name) are valid for use in an INSERT query to the users table.
 		Returns a hashed password (using auth.HashPassword) and an error. If the function fails, an empty string is returned instead.
@@ -90,7 +90,7 @@ func (cfg *ApiConfig) HandlerPostUsers(w http.ResponseWriter, r *http.Request) {
 
 	// 2. get request data
 	decoder := json.NewDecoder(r.Body)
-	reqParams := UsersRequestParameters{}
+	reqParams := UsersPOSTRequestParameters{}
 	err = decoder.Decode(&reqParams)
 	if err != nil {
 		jsonutils.WriteError(w, http.StatusBadRequest, err, "JSON formatting invalid")
@@ -104,11 +104,7 @@ func (cfg *ApiConfig) HandlerPostUsers(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 4. generate publicid
-	pid, err := nanoid.New(cfg.PublicIDLength)
-	if err != nil {
-		jsonutils.WriteError(w, http.StatusInternalServerError, err, "error generating nanoid (gonanoid.New in HandlerPostUsers)")
-		return
-	}
+	pid := cfg.PublicIDGenerator()
 
 	// 5. run query CreateUser
 	queryParams := database.CreateUserParams{
@@ -148,7 +144,7 @@ func (cfg *ApiConfig) HandlerPutUsers(w http.ResponseWriter, r *http.Request) { 
 
 	// 2. get request data
 	decoder := json.NewDecoder(r.Body)
-	reqParams := UsersRequestParameters{}
+	reqParams := UsersPOSTRequestParameters{}
 	err = decoder.Decode(&reqParams)
 	if err != nil {
 		jsonutils.WriteError(w, http.StatusBadRequest, err, "JSON formatting invalid")
@@ -203,7 +199,7 @@ func (cfg *ApiConfig) HandlerPutUsersByID(w http.ResponseWriter, r *http.Request
 	}
 
 	// 3. retrieve request data
-	request := UsersAdminRequestParameters{}
+	request := UsersPOSTAdminRequestParameters{}
 	decoder := json.NewDecoder(r.Body)
 	err = decoder.Decode(&request)
 	if err != nil {

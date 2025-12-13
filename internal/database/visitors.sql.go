@@ -374,6 +374,42 @@ func (q *Queries) SetVisitorByID(ctx context.Context, arg SetVisitorByIDParams) 
 	return i, err
 }
 
+const setVisitorByPublicID = `-- name: SetVisitorByPublicID :one
+UPDATE visitors
+SET name = $2, purpose_id = $3, status = $4, updated_at = NOW() -- status
+WHERE public_id = $1
+RETURNING id, created_at, updated_at, waiting_since, name, purpose_id, status, daily_ticket_number, public_id
+`
+
+type SetVisitorByPublicIDParams struct {
+	PublicID  string
+	Name      sql.NullString
+	PurposeID uuid.UUID
+	Status    int32
+}
+
+func (q *Queries) SetVisitorByPublicID(ctx context.Context, arg SetVisitorByPublicIDParams) (Visitor, error) {
+	row := q.db.QueryRowContext(ctx, setVisitorByPublicID,
+		arg.PublicID,
+		arg.Name,
+		arg.PurposeID,
+		arg.Status,
+	)
+	var i Visitor
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.WaitingSince,
+		&i.Name,
+		&i.PurposeID,
+		&i.Status,
+		&i.DailyTicketNumber,
+		&i.PublicID,
+	)
+	return i, err
+}
+
 const setVisitorStatusByID = `-- name: SetVisitorStatusByID :one
 UPDATE visitors
 SET status = $2, updated_at = NOW() --status 

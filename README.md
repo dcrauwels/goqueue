@@ -19,6 +19,9 @@ A .env file must manually be created. Please register the following variables:
 - REFRESHTOKENDURATION: refresh token expiration time (in weeks).
 - PUBLICIDLENGTH: length (in characters) of public-facing IDs for all database entries. Note that this applies to both API calls and urls.
 
+## dependencies
+- go get github.com/jaevor/go-nanoid
+
 # usage
 ## endpoints
 user management
