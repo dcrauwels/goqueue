@@ -74,8 +74,8 @@ type Visitor struct {
 	UpdatedAt         time.Time
 	WaitingSince      time.Time
 	Name              sql.NullString
-	PurposeID         uuid.UUID
 	Status            int32
 	DailyTicketNumber int32
 	PublicID          string
+	PurposePublicID   string
 }
