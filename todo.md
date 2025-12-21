@@ -53,6 +53,7 @@
 - [x] POST & PUT & GET users
 - [x] POST & PUT & GET visitors
 - [ ] POST & PUT desks > need to do the handler_desks.go stuff first
+- [ ] Refresh tokens will only hold the user public ID as foreign key. This means JWT implementation needs to change.
 - [ ] POST & PUT refresh_tokens
 - [ ] POST & PUT purposes
 - [ ] POST & PUT service_logs
@@ -60,12 +61,14 @@
 - [ ] Follow down the road to fix the handler functions. ??
 
 ## handler_desks.go
-- [ ] Write DB migration to drop the desk number column and instead implement a desk name string. That way you can have desk 'F1' 'S1' etc. There is no real reason to restrict it to numbers other than if you are going to pass the desk number the public ID. But I don't think that makes sense for a number of reasons.
+- [x] Write DB migration to drop the desk number column and instead implement a desk name string. That way you can have desk 'F1' 'S1' etc. There is no real reason to restrict it to numbers other than if you are going to pass the desk number the public ID. But I don't think that makes sense for a number of reasons.
+- [x] Update queries for new desks schema.
 - [ ] POST /api/desks
 - [ ] PUT /api/desks/{public_desk_id}
 - [ ] GET /api/desks
 - [ ] GET /api/desks/{public_desk_id}
 - [ ] Currently the first 3 functions require userauth, the last doesn't. Reasoning being that when a servicelog is created for a user being called to a desk the desk pid is provided and the user needs to know what actual desk they are going to. 
+- [ ] some sort of GET request for active desks, perhaps through a query parameter. Note that I need to resolve the QP issue in /api/visitors first
 
 ## Visitor daily_ticket_number implementation
 - [x] Write a migration for a ticket_counter table (two columns: date as primary key, last_ticket_number as int)
