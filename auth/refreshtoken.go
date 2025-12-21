@@ -55,8 +55,8 @@ func RotateRefreshToken(db databaseQueryer, w http.ResponseWriter, r *http.Reque
 
 	// 4. query database to create new refresh token
 	rtParams := database.CreateRefreshTokenParams{
-		Token:  newRefreshToken,
-		UserID: oldRefreshToken.UserID,
+		Token:        newRefreshToken,
+		UserPublicID: oldRefreshToken.UserPublicID,
 	}
 	result, err = db.CreateRefreshToken(r.Context(), rtParams)
 	if err != nil {

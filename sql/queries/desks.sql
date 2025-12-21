@@ -1,5 +1,5 @@
 -- name: CreateDesks :one
-INSERT INTO desks (id, public_id, number, description, is_active)
+INSERT INTO desks (id, public_id, name, description, is_active)
 VALUES (
     gen_random_uuid(),
     $1,
@@ -19,3 +19,9 @@ SELECT * FROM desks;
 -- name: GetActiveDesks :many
 SELECT * FROM desks
 WHERE is_active = TRUE;
+
+-- name: SetDesksByPublicID :one
+UPDATE desks
+SET name = $2, description = $3, is_active = $4
+WHERE public_id = $1
+RETURNING *;

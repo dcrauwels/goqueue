@@ -13,10 +13,10 @@ import (
 
 type Desk struct {
 	ID          uuid.UUID
-	Number      int32
 	Description sql.NullString
 	IsActive    bool
 	PublicID    string
+	Name        string
 }
 
 type Purpose struct {

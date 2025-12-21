@@ -66,7 +66,7 @@ func (cfg *ApiConfig) AuthUserMiddleware(next http.Handler) http.Handler {
 				}
 
 				// 1.4 make a new JWT (access token) based on refresh token
-				newAccessToken, err := auth.MakeJWT(rotatedRefreshToken.UserID, "user", cfg.Secret, cfg.AccessTokenDuration)
+				newAccessToken, err := auth.MakeJWT(rotatedRefreshToken.UserPublicID, "user", cfg.Secret, cfg.AccessTokenDuration)
 				if err != nil {
 					// if this fails, there is a problem with issueing access tokens in general, which is very fundamental
 					auth.SetAuthCookies(w, "", "", "user", cfg.AccessTokenDuration, cfg.RefreshTokenDuration)

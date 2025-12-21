@@ -11,7 +11,7 @@ import (
 )
 
 const createDesks = `-- name: CreateDesks :one
-INSERT INTO desks (id, public_id, number, description, is_active)
+INSERT INTO desks (id, public_id, name, description, is_active)
 VALUES (
     gen_random_uuid(),
     $1,
@@ -19,30 +19,30 @@ VALUES (
     $3,
     TRUE
 )
-RETURNING id, number, description, is_active, public_id
+RETURNING id, description, is_active, public_id, name
 `
 
 type CreateDesksParams struct {
 	PublicID    string
-	Number      int32
+	Name        string
 	Description sql.NullString
 }
 
 func (q *Queries) CreateDesks(ctx context.Context, arg CreateDesksParams) (Desk, error) {
-	row := q.db.QueryRowContext(ctx, createDesks, arg.PublicID, arg.Number, arg.Description)
+	row := q.db.QueryRowContext(ctx, createDesks, arg.PublicID, arg.Name, arg.Description)
 	var i Desk
 	err := row.Scan(
 		&i.ID,
-		&i.Number,
 		&i.Description,
 		&i.IsActive,
 		&i.PublicID,
+		&i.Name,
 	)
 	return i, err
 }
 
 const getActiveDesks = `-- name: GetActiveDesks :many
-SELECT id, number, description, is_active, public_id FROM desks
+SELECT id, description, is_active, public_id, name FROM desks
 WHERE is_active = TRUE
 `
 
@@ -57,10 +57,10 @@ func (q *Queries) GetActiveDesks(ctx context.Context) ([]Desk, error) {
 		var i Desk
 		if err := rows.Scan(
 			&i.ID,
-			&i.Number,
 			&i.Description,
 			&i.IsActive,
 			&i.PublicID,
+			&i.Name,
 		); err != nil {
 			return nil, err
 		}
@@ -76,7 +76,7 @@ func (q *Queries) GetActiveDesks(ctx context.Context) ([]Desk, error) {
 }
 
 const getDesks = `-- name: GetDesks :many
-SELECT id, number, description, is_active, public_id FROM desks
+SELECT id, description, is_active, public_id, name FROM desks
 `
 
 func (q *Queries) GetDesks(ctx context.Context) ([]Desk, error) {
@@ -90,10 +90,10 @@ func (q *Queries) GetDesks(ctx context.Context) ([]Desk, error) {
 		var i Desk
 		if err := rows.Scan(
 			&i.ID,
-			&i.Number,
 			&i.Description,
 			&i.IsActive,
 			&i.PublicID,
+			&i.Name,
 		); err != nil {
 			return nil, err
 		}
@@ -109,7 +109,7 @@ func (q *Queries) GetDesks(ctx context.Context) ([]Desk, error) {
 }
 
 const getDesksByPublicID = `-- name: GetDesksByPublicID :one
-SELECT id, number, description, is_active, public_id FROM desks
+SELECT id, description, is_active, public_id, name FROM desks
 WHERE public_id = $1
 `
 
@@ -118,10 +118,42 @@ func (q *Queries) GetDesksByPublicID(ctx context.Context, publicID string) (Desk
 	var i Desk
 	err := row.Scan(
 		&i.ID,
-		&i.Number,
 		&i.Description,
 		&i.IsActive,
 		&i.PublicID,
+		&i.Name,
+	)
+	return i, err
+}
+
+const setDesksByPublicID = `-- name: SetDesksByPublicID :one
+UPDATE desks
+SET name = $2, description = $3, is_active = $4
+WHERE public_id = $1
+RETURNING id, description, is_active, public_id, name
+`
+
+type SetDesksByPublicIDParams struct {
+	PublicID    string
+	Name        string
+	Description sql.NullString
+	IsActive    bool
+}
+
+func (q *Queries) SetDesksByPublicID(ctx context.Context, arg SetDesksByPublicIDParams) (Desk, error) {
+	row := q.db.QueryRowContext(ctx, setDesksByPublicID,
+		arg.PublicID,
+		arg.Name,
+		arg.Description,
+		arg.IsActive,
+	)
+	var i Desk
+	err := row.Scan(
+		&i.ID,
+		&i.Description,
+		&i.IsActive,
+		&i.PublicID,
+		&i.Name,
 	)
 	return i, err
 }
