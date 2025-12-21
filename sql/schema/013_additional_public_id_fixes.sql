@@ -36,4 +36,4 @@ ALTER TABLE visitors
 DROP CONSTRAINT fk_public_purpose_id;
 
 ALTER TABLE visitors
-DROP COLUMN purpose_public_id
+DROP COLUMN purpose_public_id;

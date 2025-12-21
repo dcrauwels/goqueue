@@ -17,9 +17,18 @@
 - [x] Currently there are no checks for user.IsActive. This needs to either go in AuthUserMiddleware or in all of the individual user authentication checks in handlers. The bottom line is: do we want to allow a user to present an access / refresh token for an inactive account and get that ID added to their context? > No, we don't, so it should be blocked at the AuthUserMiddleware level, where we clear the cookie, throw a 401 Unauthorized error, clear cookies and send them to login. (Also see previous todo.)
 - [ ] What range of statuses will be allowed? There are multiple NYI's for this, mostly in auth_visitors.go.
 
-## GET /api/visitors query parameters
+## Statuses
+- [ ] Think about whether statuses should be hardcoded or user-defined (like purposes)
+- [ ] Define statuses, currently implemented as integers, so a map is needed for integers > meaning
+- [ ] Implement statuses properly, in the following parts:
+- [ ] 1. visitors queries
+
+## GET /api/visitors 
+### query parameters
 - [ ] At least for the GET /api/visitors endpoint, we have real query parameters. E.g. GET /api/visitors?purpose=fun. I don't think these are implemented properly: they should be optional, in the sense that GET /api/visitors should just return ALL visitors, but I believe it only works right now if both query parameters are called, e.g. GET /api/visitors?purpose=&status=.
 - [ ] Filtering by date should be possible.
+### HandlerGetVisitorsByPublicID
+- [ ] There is a visitor authentication scheme which I believe is deprecated in here. The underlying idea is that only users and the visitor matching the queried PublicID would be authorized to perform this GET request. But I believe the auth.VisitorFromContext() function that is called here no longer works and that the entire visitor authentication scheme has just been abandoned and that I decided it's fine for visitors to just be queried at any point if the PublicID is known.
 
 ## Cookie authentication implementation
 - [x] Unify the access token expiration timer through an environment variable stored in cfg (tough)
@@ -42,14 +51,21 @@
 - [?] Update the handlers to invoke the nanoid generator and the pass generated public_id into the updated SQL queries.
 - [?] Update the handlers to have the queryparameters and responseparameter structs include public_ids.
 - [x] POST & PUT & GET users
-- [ ] POST & PUT & GET visitors
-- [ ] POST & PUT desks
+- [x] POST & PUT & GET visitors
+- [ ] POST & PUT desks > need to do the handler_desks.go stuff first
 - [ ] POST & PUT refresh_tokens
 - [ ] POST & PUT purposes
 - [ ] POST & PUT service_logs
 - [ ] POST & PUT users
 - [ ] Follow down the road to fix the handler functions. ??
 
+## handler_desks.go
+- [ ] Write DB migration to drop the desk number column and instead implement a desk name string. That way you can have desk 'F1' 'S1' etc. There is no real reason to restrict it to numbers other than if you are going to pass the desk number the public ID. But I don't think that makes sense for a number of reasons.
+- [ ] POST /api/desks
+- [ ] PUT /api/desks/{public_desk_id}
+- [ ] GET /api/desks
+- [ ] GET /api/desks/{public_desk_id}
+- [ ] Currently the first 3 functions require userauth, the last doesn't. Reasoning being that when a servicelog is created for a user being called to a desk the desk pid is provided and the user needs to know what actual desk they are going to. 
 
 ## Visitor daily_ticket_number implementation
 - [x] Write a migration for a ticket_counter table (two columns: date as primary key, last_ticket_number as int)
@@ -70,5 +86,6 @@
 - [x] Specify the different errors auth.ValidateJWT can spit out to match the reasons for throwing an error. (Token expired, invalid, etc.) > turns out the JWT package has these predefined.
 - [ ] Decide on whether to keep PUT /api/users as well as PUT /api/users/{user_id} or delete the former.
 - [ ] Currently GET /api/users requires admin status. Is that actually necessary?
+- [ ] There is currently a privacy problem where visitors can be queried historically. The identifying information is really in their name more than anything else. So that needs to be periodically removed from the visitors table, as it's not relevant for statistical purposes either.
 
 # Other

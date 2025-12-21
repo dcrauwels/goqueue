@@ -83,9 +83,14 @@ func main() {
 	mux.Handle("POST /api/revoke/{user_id}", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerRevokeRefreshToken))) // ok
 	//handler_visitors.go
 	mux.HandleFunc("POST /api/visitors", apiCfg.HandlerPostVisitors)
-	mux.Handle("PUT /api/visitors/{public_visitor_id}", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerPutVisitorsByID))) // ok
-	mux.Handle("GET /api/visitors", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerGetVisitors)))                         // ok
-	mux.Handle("GET /api/visitors/{public_visitor_id}", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerGetVisitorsByID))) // ok
+	mux.Handle("PUT /api/visitors/{public_visitor_id}", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerPutVisitorsByPublicID))) // ok
+	mux.Handle("GET /api/visitors", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerGetVisitors)))                               // ok
+	mux.Handle("GET /api/visitors/{public_visitor_id}", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerGetVisitorsByPublicID))) // ok
+	//handler_desks.go
+	mux.Handle("POST /api/desks", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerPostDesks)))                          // NYI
+	mux.Handle("PUT /api/desks/{public_desk_id}", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerPutDesksByPublicID))) // NYI
+	mux.Handle("GET /api/desks", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerGetDesks)))                            // NYI
+	mux.HandleFunc("GET /api/desks/{public_desk_id}", apiCfg.HandlerGetDesksByPublicID)                                          // NYI
 	//handler_purposes.go
 	mux.Handle("POST /api/purposes", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerPostPurposes)))                // ok
 	mux.Handle("PUT /api/purposes/{purpose_id}", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerPutPurposesByID))) // ok

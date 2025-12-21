@@ -138,18 +138,14 @@ func (q *Queries) GetVisitorsByPublicID(ctx context.Context, publicID string) (V
 	return i, err
 }
 
-const getVisitorsByPurpose = `-- name: GetVisitorsByPurpose :many
-
+const getVisitorsByPurposePublicID = `-- name: GetVisitorsByPurposePublicID :many
 SELECT id, created_at, updated_at, waiting_since, name, status, daily_ticket_number, public_id, purpose_public_id FROM visitors
 WHERE purpose_public_id = $1
 ORDER BY waiting_since ASC
 `
 
-// SELECT * FROM visitors
-// WHERE purpose_id = $1
-// ORDER BY waiting_since ASC;
-func (q *Queries) GetVisitorsByPurpose(ctx context.Context, purposePublicID string) ([]Visitor, error) {
-	rows, err := q.db.QueryContext(ctx, getVisitorsByPurpose, purposePublicID)
+func (q *Queries) GetVisitorsByPurposePublicID(ctx context.Context, purposePublicID string) ([]Visitor, error) {
+	rows, err := q.db.QueryContext(ctx, getVisitorsByPurposePublicID, purposePublicID)
 	if err != nil {
 		return nil, err
 	}
@@ -181,23 +177,19 @@ func (q *Queries) GetVisitorsByPurpose(ctx context.Context, purposePublicID stri
 	return items, nil
 }
 
-const getVisitorsByPurposeStatus = `-- name: GetVisitorsByPurposeStatus :many
-
+const getVisitorsByPurposePublicIDAndStatus = `-- name: GetVisitorsByPurposePublicIDAndStatus :many
 SELECT id, created_at, updated_at, waiting_since, name, status, daily_ticket_number, public_id, purpose_public_id FROM visitors
 WHERE purpose_public_id = $1 AND status = $2
 ORDER BY waiting_since ASC
 `
 
-type GetVisitorsByPurposeStatusParams struct {
+type GetVisitorsByPurposePublicIDAndStatusParams struct {
 	PurposePublicID string
 	Status          int32
 }
 
-// SELECT * FROM visitors
-// WHERE purpose_id = $1 AND status = $2
-// ORDER BY waiting_since ASC;
-func (q *Queries) GetVisitorsByPurposeStatus(ctx context.Context, arg GetVisitorsByPurposeStatusParams) ([]Visitor, error) {
-	rows, err := q.db.QueryContext(ctx, getVisitorsByPurposeStatus, arg.PurposePublicID, arg.Status)
+func (q *Queries) GetVisitorsByPurposePublicIDAndStatus(ctx context.Context, arg GetVisitorsByPurposePublicIDAndStatusParams) ([]Visitor, error) {
+	rows, err := q.db.QueryContext(ctx, getVisitorsByPurposePublicIDAndStatus, arg.PurposePublicID, arg.Status)
 	if err != nil {
 		return nil, err
 	}
@@ -307,18 +299,14 @@ func (q *Queries) GetVisitorsForToday(ctx context.Context) ([]Visitor, error) {
 	return items, nil
 }
 
-const getWaitingVisitorsByPurpose = `-- name: GetWaitingVisitorsByPurpose :many
-
+const getWaitingVisitorsByPurposePublicID = `-- name: GetWaitingVisitorsByPurposePublicID :many
 SELECT id, created_at, updated_at, waiting_since, name, status, daily_ticket_number, public_id, purpose_public_id FROM visitors 
 WHERE purpose_public_id = $1 AND status = 1 -- NOTE that statuses are still not properly implemented
 ORDER BY waiting_since ASC
 `
 
-// SELECT * FROM visitors
-// WHERE purpose_id = $1 AND status = 1 -- this whole status business is still not implemented correctly
-// ORDER BY waiting_since ASC;
-func (q *Queries) GetWaitingVisitorsByPurpose(ctx context.Context, purposePublicID string) ([]Visitor, error) {
-	rows, err := q.db.QueryContext(ctx, getWaitingVisitorsByPurpose, purposePublicID)
+func (q *Queries) GetWaitingVisitorsByPurposePublicID(ctx context.Context, purposePublicID string) ([]Visitor, error) {
+	rows, err := q.db.QueryContext(ctx, getWaitingVisitorsByPurposePublicID, purposePublicID)
 	if err != nil {
 		return nil, err
 	}
@@ -350,27 +338,22 @@ func (q *Queries) GetWaitingVisitorsByPurpose(ctx context.Context, purposePublic
 	return items, nil
 }
 
-const setVisitorByID = `-- name: SetVisitorByID :one
-
+const setVisitorByPublicID = `-- name: SetVisitorByPublicID :one
 UPDATE visitors
 SET name = $2, purpose_public_id = $3, status = $4, updated_at = NOW() -- status
 WHERE public_id = $1
 RETURNING id, created_at, updated_at, waiting_since, name, status, daily_ticket_number, public_id, purpose_public_id
 `
 
-type SetVisitorByIDParams struct {
+type SetVisitorByPublicIDParams struct {
 	PublicID        string
 	Name            sql.NullString
 	PurposePublicID string
 	Status          int32
 }
 
-// UPDATE visitors
-// SET name = $2, purpose_id = $3, status = $4, updated_at = NOW() -- status
-// WHERE id = $1
-// RETURNING *;
-func (q *Queries) SetVisitorByID(ctx context.Context, arg SetVisitorByIDParams) (Visitor, error) {
-	row := q.db.QueryRowContext(ctx, setVisitorByID,
+func (q *Queries) SetVisitorByPublicID(ctx context.Context, arg SetVisitorByPublicIDParams) (Visitor, error) {
+	row := q.db.QueryRowContext(ctx, setVisitorByPublicID,
 		arg.PublicID,
 		arg.Name,
 		arg.PurposePublicID,

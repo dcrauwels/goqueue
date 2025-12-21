@@ -29,13 +29,13 @@ type Purpose struct {
 }
 
 type RefreshToken struct {
-	Token     string
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	UserID    uuid.UUID
-	ExpiresAt time.Time
-	RevokedAt sql.NullTime
-	PublicID  string
+	Token        string
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+	ExpiresAt    time.Time
+	RevokedAt    sql.NullTime
+	PublicID     string
+	UserPublicID string
 }
 
 type ServiceLog struct {

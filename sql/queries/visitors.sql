@@ -29,32 +29,23 @@ SELECT * FROM visitors
 WHERE status = $1 -- status
 ORDER BY waiting_since ASC;
 
--- name: GetVisitorsByPurpose :many
---SELECT * FROM visitors
---WHERE purpose_id = $1
---ORDER BY waiting_since ASC;
+-- name: SetVisitorByPublicID :one
+UPDATE visitors
+SET name = $2, purpose_public_id = $3, status = $4, updated_at = NOW() -- status
+WHERE public_id = $1
+RETURNING *;
 
 -- name: GetVisitorsByPurposePublicID :many
 SELECT * FROM visitors
 WHERE purpose_public_id = $1
 ORDER BY waiting_since ASC;
 
--- name: GetVisitorsByPurposeStatus :many
---SELECT * FROM visitors
---WHERE purpose_id = $1 AND status = $2
---ORDER BY waiting_since ASC;
-
--- name: GetVisitorsByPublicPurposeIDAndStatus :many
+-- name: GetVisitorsByPurposePublicIDAndStatus :many
 SELECT * FROM visitors
 WHERE purpose_public_id = $1 AND status = $2
 ORDER BY waiting_since ASC;
 
--- name: GetWaitingVisitorsByPurpose :many
---SELECT * FROM visitors
---WHERE purpose_id = $1 AND status = 1 -- this whole status business is still not implemented correctly
---ORDER BY waiting_since ASC;
-
--- name: GetWaitingVisitorsByPublicPurposeID :many
+-- name: GetWaitingVisitorsByPurposePublicID :many
 SELECT * FROM visitors 
 WHERE purpose_public_id = $1 AND status = 1 -- NOTE that statuses are still not properly implemented
 ORDER BY waiting_since ASC;
@@ -63,18 +54,6 @@ ORDER BY waiting_since ASC;
 SELECT * FROM visitors
 WHERE waiting_since::date = CURRENT_DATE
 ORDER BY waiting_since ASC;
-
--- name: SetVisitorByID :one
---UPDATE visitors
---SET name = $2, purpose_id = $3, status = $4, updated_at = NOW() -- status 
---WHERE id = $1
---RETURNING *;
-
--- name: SetVisitorByPublicID :one
-UPDATE visitors
-SET name = $2, purpose_public_id = $3, status = $4, updated_at = NOW() -- status
-WHERE public_id = $1
-RETURNING *;
 
 -- name: SetVisitorStatusByID :one
 UPDATE visitors
