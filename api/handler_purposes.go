@@ -76,7 +76,7 @@ func (cfg *ApiConfig) handlePurposeOperation(
 			jsonutils.WriteError(w, http.StatusBadRequest, err, "user provided invalid parent_purpose_id when requesting POST /api/purposes")
 			return
 		case "PUT":
-			jsonutils.WriteError(w, http.StatusBadRequest, err, "user provided invalid id or parent_purpose_id when requesting PUT /api/purposes")
+			jsonutils.WriteError(w, http.StatusBadRequest, err, "user provided invalid public_id or parent_purpose_id when requesting PUT /api/purposes")
 			return
 		}
 	} else if err != nil {
@@ -107,6 +107,7 @@ func (cfg *ApiConfig) HandlerPostPurposes(w http.ResponseWriter, r *http.Request
 		// Database operation function
 		func() (database.Purpose, error) {
 			queryParams := database.CreatePurposeParams{
+				PublicID:        cfg.PublicIDGenerator(),
 				PurposeName:     request.PurposeName,
 				ParentPurposeID: request.ParentPurposeID,
 			}
@@ -115,17 +116,12 @@ func (cfg *ApiConfig) HandlerPostPurposes(w http.ResponseWriter, r *http.Request
 	)
 }
 
-// PUT /api/purposes/{purpose_id} (admin only)
+// PUT /api/purposes/{purpose_public_id} (admin only)
 func (cfg *ApiConfig) HandlerPutPurposesByID(w http.ResponseWriter, r *http.Request) {
 	var request PurposesRequestParameters // note that we only need to inituate a PurposeRequestParameters struct and it is populated by handlePurposeOperation
 
 	// retrieve request ID
-	req := r.PathValue("user_id")
-	purposeID, err := uuid.Parse(req)
-	if err != nil {
-		jsonutils.WriteError(w, http.StatusBadRequest, err, "endpoint is not a valid user ID")
-		return
-	}
+	ppid := r.PathValue("purpose_public_id")
 
 	cfg.handlePurposeOperation(w, r, "PUT",
 		// Decoder function
@@ -135,18 +131,18 @@ func (cfg *ApiConfig) HandlerPutPurposesByID(w http.ResponseWriter, r *http.Requ
 		},
 		// Database operation function
 		func() (database.Purpose, error) {
-			queryParams := database.SetPurposeParams{
-				ID:              purposeID,
+			queryParams := database.SetPurposeByPublicIDParams{
+				PublicID:        ppid,
 				PurposeName:     request.PurposeName,
 				ParentPurposeID: request.ParentPurposeID,
 			}
-			return cfg.DB.SetPurpose(r.Context(), queryParams)
+			return cfg.DB.SetPurposeByPublicID(r.Context(), queryParams)
 		},
 	)
 }
 
-// GET /api/purposes (no authentication or request body required)
-func (cfg *ApiConfig) HandlerGetPurposes(w http.ResponseWriter, r *http.Request) {
+func (cfg *ApiConfig) HandlerGetPurposes(w http.ResponseWriter, r *http.Request) { // GET /api/purposes
+	// (no authentication or request body required)
 	// 1. run query
 	purposes, err := cfg.DB.GetPurposes(r.Context())
 	if errors.Is(err, sql.ErrNoRows) {
@@ -165,17 +161,12 @@ func (cfg *ApiConfig) HandlerGetPurposes(w http.ResponseWriter, r *http.Request)
 	jsonutils.WriteJSON(w, http.StatusOK, response)
 }
 
-func (cfg *ApiConfig) HandlerGetPurposesByID(w http.ResponseWriter, r *http.Request) {
+func (cfg *ApiConfig) HandlerGetPurposesByID(w http.ResponseWriter, r *http.Request) { // GEt /api/purposes/{public_id}
 	// 1. get purpose ID from endpoint
-	req := r.PathValue("purpose_id")
-	purposeID, err := uuid.Parse(req)
-	if err != nil {
-		jsonutils.WriteError(w, http.StatusBadRequest, err, "endpoint is not a valid UUID")
-		return
-	}
+	ppid := r.PathValue("purpose_public_id")
 
 	// 2. run query
-	purpose, err := cfg.DB.GetPurposesByID(r.Context(), purposeID)
+	purpose, err := cfg.DB.GetPurposesByPublicID(r.Context(), ppid)
 	if errors.Is(err, sql.ErrNoRows) {
 		jsonutils.WriteError(w, http.StatusNotFound, err, "no purposes found in database when requesting GET /api/purpose/{purpose_id}")
 		return

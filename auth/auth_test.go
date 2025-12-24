@@ -3,7 +3,7 @@ package auth
 import (
 	"testing"
 
-	"github.com/google/uuid"
+	"github.com/jaevor/go-nanoid"
 )
 
 func TestPassword(t *testing.T) {
@@ -37,12 +37,13 @@ func TestPassword(t *testing.T) {
 
 func TestUserJWT(t *testing.T) {
 	// arguments
-	userID := uuid.New()
+	pidGenerator, err := nanoid.Standard(8)
+	userPublicID := pidGenerator()
 	userType := "user"
 	tokenSecret := "qqpp1001"
 
 	// make jwt
-	jwt, err := MakeJWT(userID, userType, tokenSecret, 60)
+	jwt, err := MakeJWT(userPublicID, userType, tokenSecret, 60)
 	if err != nil {
 		t.Errorf(`MakeJWT(userID, "qqpp1001", time.Second) = %s, %v; expected token, nil`, jwt, err)
 	}
@@ -50,9 +51,9 @@ func TestUserJWT(t *testing.T) {
 	// straight validation
 	validatedID, validatedType, err := ValidateJWT(jwt, tokenSecret)
 	if err != nil {
-		t.Errorf(`ValidateJWT(jwt, "qqpp1001") = %s, %v; expected UUID, nil`, validatedID.String(), err)
-	} else if userID.String() != validatedID.String() {
-		t.Errorf(`userID.String() == validatedID.String() returns false; expected true`)
+		t.Errorf(`ValidateJWT(jwt, "qqpp1001") = %s, %v; expected UUID, nil`, validatedID, err)
+	} else if userPublicID != validatedID {
+		t.Errorf(`userPublicID == validatedID returns false; expected true`)
 	} else if userType != validatedType {
 		t.Errorf(`userType == validatedType returns false; expected true`)
 	}
@@ -60,6 +61,6 @@ func TestUserJWT(t *testing.T) {
 	// wrong tokenSecret
 	wrongID, _, err := ValidateJWT(jwt, "zasxzasx")
 	if err == nil {
-		t.Errorf(`ValidateJWT(jwt, "zasxzasx") = %v, %v; expected uuid.Nil, err`, wrongID, err)
+		t.Errorf(`ValidateJWT(jwt, "zasxzasx") = %v, %v; expected "", err`, wrongID, err)
 	}
 }

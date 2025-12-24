@@ -53,9 +53,11 @@
 - [x] POST & PUT & GET users
 - [x] POST & PUT & GET visitors
 - [ ] POST & PUT desks > need to do the handler_desks.go stuff first
-- [ ] Refresh tokens will only hold the user public ID as foreign key. This means JWT implementation needs to change.
-- [ ] POST & PUT refresh_tokens
-- [ ] POST & PUT purposes
+- [x] Refresh tokens will only hold the user public ID as foreign key. This means JWT implementation needs to change.
+- [x] Followup on previous todo: fix auth_test.go - specifically the JWT unit test that currently takes a uuid.new() as input.
+- [x] POST & PUT refresh_tokens
+- [x] POST & PUT purposes
+- [ ] A number of api paths have '{public_visitor_id}' in them and a number have '{user_public_id}'. Unify to latter style across main.go and handlers.
 - [ ] POST & PUT service_logs
 - [ ] POST & PUT users
 - [ ] Follow down the road to fix the handler functions. ??
@@ -90,5 +92,6 @@
 - [ ] Decide on whether to keep PUT /api/users as well as PUT /api/users/{user_id} or delete the former.
 - [ ] Currently GET /api/users requires admin status. Is that actually necessary?
 - [ ] There is currently a privacy problem where visitors can be queried historically. The identifying information is really in their name more than anything else. So that needs to be periodically removed from the visitors table, as it's not relevant for statistical purposes either.
+- [ ] The scenario where a non-admin user accesses their own user_id under POST /api/revoke should redirect to /api/logout, not just throw a bad request error.
 
 # Other

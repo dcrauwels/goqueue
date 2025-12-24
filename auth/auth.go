@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/dcrauwels/goqueue/internal/database"
-	"github.com/google/uuid"
 )
 
 var ErrWrongUserType = errors.New("usertype supplied in JWT is not valid")
@@ -22,8 +21,8 @@ type configReader interface {
 }
 
 type databaseQueryer interface {
-	GetUserByID(context.Context, uuid.UUID) (database.User, error)
-	GetVisitorByID(context.Context, uuid.UUID) (database.Visitor, error)
+	GetUserByPublicID(context.Context, string) (database.User, error)
+	GetVisitorsByPublicID(context.Context, string) (database.Visitor, error)
 	CreateRefreshToken(context.Context, database.CreateRefreshTokenParams) (database.RefreshToken, error)
 	RevokeRefreshTokenByToken(context.Context, string) (database.RefreshToken, error)
 }
@@ -36,6 +35,8 @@ func (ck ContextKey) String() string {
 
 const UserIDContextKey ContextKey = "userID"
 const VisitorIDContextKey ContextKey = "visitorID"
+const UserPublicIDContextKey ContextKey = "userPublicID"
+const VisitorPublicIDContextKey ContextKey = "visitorPublicID"
 
 func SetAuthCookies(w http.ResponseWriter, accessToken, refreshToken, expectedAuthType string, accessTokenMinuteDuration, refreshTokenDayDuration int) {
 	// Access Token Cookie

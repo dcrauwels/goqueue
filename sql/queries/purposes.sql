@@ -35,6 +35,12 @@ SET purpose_name = $2, parent_purpose_id = $3
 WHERE id = $1
 RETURNING *;
 
+-- name: SetPurposeByPublicID :one
+UPDATE purposes
+SET purpose_name = $2, parent_purpose_id = $3
+WHERE public_id = $1
+RETURNING *;
+
 -- name: SetPurposeName :one
 UPDATE purposes
 SET purpose_name = $2

@@ -78,21 +78,21 @@ func (cfg *ApiConfig) AuthUserMiddleware(next http.Handler) http.Handler {
 				auth.SetAuthCookies(w, newAccessToken, rotatedRefreshToken.Token, "user", cfg.AccessTokenDuration, cfg.RefreshTokenDuration)
 
 				// 1.6 pass on to next handler
-				uid := rotatedRefreshToken.UserID.String()
+				upid := rotatedRefreshToken.UserPublicID
 				ctx := r.Context()
-				ctx = context.WithValue(ctx, auth.UserIDContextKey, uid)
+				ctx = context.WithValue(ctx, auth.UserPublicIDContextKey, upid)
 				next.ServeHTTP(w, r.WithContext(ctx))
 				return
 			} else { // so if accessErr != nil && refreshErr != nil, meaning no cookie was found for either access or refresh token
 				// 1.7 pass on to next handler with explicitly empty authentication
 				ctx := r.Context()
-				ctx = context.WithValue(ctx, auth.UserIDContextKey, "") // this is to prevent an attacker sending a request without the cookie but with the UserIDContextKey manually set
+				ctx = context.WithValue(ctx, auth.UserPublicIDContextKey, "") // this is to prevent an attacker sending a request without the cookie but with the UserPublicIDContextKey manually set
 				next.ServeHTTP(w, r.WithContext(ctx))
 			}
 		}
 
 		// 2. if accessErr == nil ... so we can deal with a functioning access token
-		// first check if we have a refresh token
+		// 2.1 first check if we have a refresh token
 		refreshTokenCookie, refreshErr := r.Cookie("user_refresh_token")
 		if refreshErr != nil { // no refresh token cookie found
 			auth.SetAuthCookies(w, "", "", usertype, cfg.AccessTokenDuration, cfg.RefreshTokenDuration)
@@ -100,17 +100,17 @@ func (cfg *ApiConfig) AuthUserMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		// 2.1 then validate access token
-		userID, ut, err := auth.ValidateJWT(accessTokenCookie.Value, cfg.GetSecret())
-		// 2.1.1 sanity check
+		// 2.2 then validate access token
+		userPublicID, ut, err := auth.ValidateJWT(accessTokenCookie.Value, cfg.GetSecret())
+		// 2.2.1 sanity check
 		if ut != usertype {
-			// unexpected state: access token usertype does not match access token cookie name > clear cookies and sent to login
+			// unexpected state: access token usertype does not match access token cookie name > clear cookies and send to login
 			jsonutils.WriteError(w, http.StatusBadRequest, errors.New("access token usertype does not match expectation from cookie name"), "access token usertype does not match cookie name")
 			return
 		}
-		// 2.1.2 if the access token is invalid auth.ValidateJWT will return an error
+		// 2.2.2 if the access token is invalid auth.ValidateJWT will return an error
 		if err != nil {
-			// 2.1.3 get the refresh token
+			// 2.2.3 get the refresh token
 			rotatedRefreshToken, err := auth.RotateRefreshToken(cfg.DB, w, r, refreshTokenCookie)
 			if err != nil { // in other words: if we have a refresh token cookie but the corresponding token is not working
 				// if refresh token is broken, best to redirect to login
@@ -118,27 +118,27 @@ func (cfg *ApiConfig) AuthUserMiddleware(next http.Handler) http.Handler {
 				return
 			}
 
-			// 2.1.4 no error at 2.1.3 means we have a valid refresh token > make a new access token based on refresh token
-			newAccessToken, err := auth.MakeJWT(rotatedRefreshToken.UserID, "user", cfg.Secret, cfg.AccessTokenDuration)
+			// 2.2.4 no error at 2.2.3 means we have a valid refresh token > make a new access token based on refresh token
+			newAccessToken, err := auth.MakeJWT(rotatedRefreshToken.UserPublicID, "user", cfg.Secret, cfg.AccessTokenDuration)
 			if err != nil {
 				// this should probably not redirect anywhere and just cancel the whole ordeal - this is pretty fundamental
-				jsonutils.WriteError(w, http.StatusInternalServerError, err, "error making new JWT")
+				jsonutils.WriteError(w, http.StatusInternalServerError, err, "error making new JWT (auth.MakeJWT at 2.2.4 in api.AuthUserMiddleware)")
 				return
 			}
 
-			// 2.1.5 Set new cookies
+			// 2.2.5 Set new cookies
 			auth.SetAuthCookies(w, newAccessToken, rotatedRefreshToken.Token, "user", cfg.AccessTokenDuration, cfg.RefreshTokenDuration)
 
-			// 2.1.6 retry same request (redirect to original path. note that this time we will have proper cookies so 2.2 should trigger)
-			uid := rotatedRefreshToken.UserID.String()
+			// 2.2.6 retry same request (redirect to original path. note that this time we will have proper cookies so 2.2 should trigger)
+			upid := rotatedRefreshToken.UserPublicID
 			ctx := r.Context()
-			ctx = context.WithValue(ctx, auth.UserIDContextKey, uid)
+			ctx = context.WithValue(ctx, auth.UserIDContextKey, upid)
 			next.ServeHTTP(w, r.WithContext(ctx))
 			return
 
 		}
 
-		// 2.2 rotate refresh token
+		// 2.3 rotate refresh token
 		rotatedRefreshToken, err := auth.RotateRefreshToken(cfg.DB, w, r, refreshTokenCookie) // note that auth.RotateRefreshToken calls WriteError on its own
 		if err != nil {
 			if err == auth.ErrRefreshTokenInvalid {
@@ -152,7 +152,7 @@ func (cfg *ApiConfig) AuthUserMiddleware(next http.Handler) http.Handler {
 
 		}
 
-		// 2.3 set rotated refresh token to cookie
+		// 2.4 set rotated refresh token to cookie
 		http.SetCookie(w, &http.Cookie{
 			Name:     "refresh_token",
 			Value:    rotatedRefreshToken.Token,
@@ -163,9 +163,9 @@ func (cfg *ApiConfig) AuthUserMiddleware(next http.Handler) http.Handler {
 			SameSite: http.SameSiteStrictMode,
 		})
 
-		// 2.4 check if user is active
-		var uid string
-		user, err := cfg.DB.GetUserByID(r.Context(), userID)
+		// 2.5 check if user is active
+		var upid string
+		user, err := cfg.DB.GetUserByPublicID(r.Context(), userPublicID)
 		if errors.Is(err, sql.ErrNoRows) { // unexpected state: a non-existing user is specified in the access token jwt
 			auth.SetAuthCookies(w, "", "", "user", cfg.AccessTokenDuration, cfg.RefreshTokenDuration)
 			jsonutils.WriteError(w, http.StatusUnauthorized, err, "non-existing user specified in access token JWT. Note that this error should never occur.")
@@ -182,9 +182,9 @@ func (cfg *ApiConfig) AuthUserMiddleware(next http.Handler) http.Handler {
 		}
 
 		// 3. modify context to take ID and pass into next handler
-		uid = userID.String()
+		upid = userPublicID
 		ctx := r.Context()
-		ctx = context.WithValue(ctx, auth.UserIDContextKey, uid)
+		ctx = context.WithValue(ctx, auth.UserIDContextKey, upid)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

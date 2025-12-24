@@ -197,6 +197,33 @@ func (q *Queries) SetPurpose(ctx context.Context, arg SetPurposeParams) (Purpose
 	return i, err
 }
 
+const setPurposeByPublicID = `-- name: SetPurposeByPublicID :one
+UPDATE purposes
+SET purpose_name = $2, parent_purpose_id = $3
+WHERE public_id = $1
+RETURNING id, created_at, updated_at, purpose_name, parent_purpose_id, public_id
+`
+
+type SetPurposeByPublicIDParams struct {
+	PublicID        string
+	PurposeName     string
+	ParentPurposeID uuid.NullUUID
+}
+
+func (q *Queries) SetPurposeByPublicID(ctx context.Context, arg SetPurposeByPublicIDParams) (Purpose, error) {
+	row := q.db.QueryRowContext(ctx, setPurposeByPublicID, arg.PublicID, arg.PurposeName, arg.ParentPurposeID)
+	var i Purpose
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.PurposeName,
+		&i.ParentPurposeID,
+		&i.PublicID,
+	)
+	return i, err
+}
+
 const setPurposeName = `-- name: SetPurposeName :one
 UPDATE purposes
 SET purpose_name = $2
