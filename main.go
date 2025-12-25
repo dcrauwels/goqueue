@@ -70,9 +70,9 @@ func main() {
 	//handler_users.go
 	mux.Handle("POST /api/users", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerPostUsers)))                    // ok
 	mux.Handle("PUT /api/users", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerPutUsers)))                      // ok
-	mux.Handle("PUT /api/users/{public_user_id}", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerPutUsersByID))) // ok
+	mux.Handle("PUT /api/users/{user_public_id}", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerPutUsersByID))) // ok
 	mux.Handle("GET /api/users", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerGetUsers)))                      // ok
-	mux.HandleFunc("GET /api/users/{public_user_id}", apiCfg.HandlerGetUsersByID)                                          // ok
+	mux.HandleFunc("GET /api/users/{user_public_id}", apiCfg.HandlerGetUsersByID)                                          // ok
 	//mux.HandleFunc("DELETE /api/users", apiCfg.HandlerDeleteUsers) NYI do I even want this
 	//handler_auth.go
 	mux.HandleFunc("POST /api/login", apiCfg.HandlerLoginUser)
@@ -83,24 +83,24 @@ func main() {
 	mux.Handle("POST /api/revoke/{user_public_id}", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerRevokeRefreshToken))) // ok
 	//handler_visitors.go
 	mux.HandleFunc("POST /api/visitors", apiCfg.HandlerPostVisitors)
-	mux.Handle("PUT /api/visitors/{public_visitor_id}", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerPutVisitorsByPublicID))) // ok
+	mux.Handle("PUT /api/visitors/{visitor_public_id}", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerPutVisitorsByPublicID))) // ok
 	mux.Handle("GET /api/visitors", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerGetVisitors)))                               // ok
-	mux.Handle("GET /api/visitors/{public_visitor_id}", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerGetVisitorsByPublicID))) // ok
+	mux.Handle("GET /api/visitors/{visitor_public_id}", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerGetVisitorsByPublicID))) // ok
 	//handler_desks.go
 	mux.Handle("POST /api/desks", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerPostDesks)))                          // NYI
-	mux.Handle("PUT /api/desks/{public_desk_id}", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerPutDesksByPublicID))) // NYI
+	mux.Handle("PUT /api/desks/{desk_public_id}", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerPutDesksByPublicID))) // NYI
 	mux.Handle("GET /api/desks", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerGetDesks)))                            // NYI
-	mux.HandleFunc("GET /api/desks/{public_desk_id}", apiCfg.HandlerGetDesksByPublicID)                                          // NYI
+	mux.HandleFunc("GET /api/desks/{desk_public_id}", apiCfg.HandlerGetDesksByPublicID)                                          // NYI
 	//handler_purposes.go
 	mux.Handle("POST /api/purposes", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerPostPurposes)))                       // ok
 	mux.Handle("PUT /api/purposes/{purpose_public_id}", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerPutPurposesByID))) // ok
 	mux.HandleFunc("GET /api/purposes", apiCfg.HandlerGetPurposes)                                                                  // ok no auth needed
 	mux.HandleFunc("GET /api/purposes/{purpose_public_id}", apiCfg.HandlerGetPurposesByID)                                          // NYI is this needed? Maybe GetPurposesByName instead?
 	//handler_servicelogs.go
-	mux.Handle("POST /api/servicelogs", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerPostServicelogs)))                   // NYI
-	mux.Handle("PUT /api/servicelogs/{servicelog_id}", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerPutServicelogsByID))) // NYI
-	mux.Handle("GET /api/servicelogs", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerGetServicelogs)))                     // NYI
-	//mux.HandleFunc("GET /api/servicelogs/{visitor_id}", apiCfg.HandlerGetServicelogsByVisitorID)                                   // NYI not convinced this is needed
+	mux.Handle("POST /api/servicelogs", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerPostServicelogs)))                          // NYI
+	mux.Handle("PUT /api/servicelogs/{servicelog_public_id}", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerPutServicelogsByID))) // NYI
+	mux.Handle("GET /api/servicelogs", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerGetServicelogs)))                            // NYI
+	//mux.HandleFunc("GET /api/servicelogs/{visitor_public_id}", apiCfg.HandlerGetServicelogsByVisitorID)                                   // NYI not convinced this is needed
 
 	/// register handlers from the admin package
 	//handler_admin.go

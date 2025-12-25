@@ -11,6 +11,7 @@ import (
 	"github.com/dcrauwels/goqueue/auth"
 	"github.com/dcrauwels/goqueue/internal/database"
 	"github.com/dcrauwels/goqueue/jsonutils"
+	"github.com/dcrauwels/goqueue/strutils"
 	"github.com/google/uuid"
 )
 
@@ -121,7 +122,11 @@ func (cfg *ApiConfig) HandlerPutPurposesByID(w http.ResponseWriter, r *http.Requ
 	var request PurposesRequestParameters // note that we only need to inituate a PurposeRequestParameters struct and it is populated by handlePurposeOperation
 
 	// retrieve request ID
-	ppid := r.PathValue("purpose_public_id")
+	ppid, err := strutils.GetPublicIDFromPathValue("purpose_public_id", cfg.PublicIDLength, r)
+	if err != nil {
+		jsonutils.WriteError(w, http.StatusBadRequest, err, "incorrect path value length")
+		return
+	}
 
 	cfg.handlePurposeOperation(w, r, "PUT",
 		// Decoder function
@@ -161,9 +166,13 @@ func (cfg *ApiConfig) HandlerGetPurposes(w http.ResponseWriter, r *http.Request)
 	jsonutils.WriteJSON(w, http.StatusOK, response)
 }
 
-func (cfg *ApiConfig) HandlerGetPurposesByID(w http.ResponseWriter, r *http.Request) { // GEt /api/purposes/{public_id}
-	// 1. get purpose ID from endpoint
-	ppid := r.PathValue("purpose_public_id")
+func (cfg *ApiConfig) HandlerGetPurposesByID(w http.ResponseWriter, r *http.Request) { // GEt /api/purposes/{purpose_public_id}
+	// 1. get purpose ID from endpoint path value
+	ppid, err := strutils.GetPublicIDFromPathValue("purpose_public_id", cfg.PublicIDLength, r)
+	if err != nil {
+		jsonutils.WriteError(w, http.StatusBadRequest, err, "incorrect path value length")
+		return
+	}
 
 	// 2. run query
 	purpose, err := cfg.DB.GetPurposesByPublicID(r.Context(), ppid)

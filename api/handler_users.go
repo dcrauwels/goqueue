@@ -57,7 +57,7 @@ func ProcessUsersParameters(w http.ResponseWriter, request UsersPOSTRequestParam
 
 	//email valid
 	if err := strutils.ValidateEmail(request.Email); err != nil {
-		jsonutils.WriteError(w, http.StatusBadRequest, err, "password formatting invalid: please use jdoe@provider.tld")
+		jsonutils.WriteError(w, http.StatusBadRequest, err, "email formatting invalid: please use jdoe@provider.tld")
 		return "", err
 	}
 	//password valid (aA0)
@@ -131,7 +131,7 @@ func (cfg *ApiConfig) HandlerPostUsers(w http.ResponseWriter, r *http.Request) {
 func (cfg *ApiConfig) HandlerPutUsers(w http.ResponseWriter, r *http.Request) { // PUT /api/users
 	/*
 		Function to change own details for user. Only things a user can change about himself are email, password and fullname
-		Currently the way this is set up is that a user changes himself. But perhaps it would be better to only keep the PUT /api/users/{user_id} setup and
+		Currently the way this is set up is that a user changes himself. But perhaps it would be better to only keep the PUT /api/users/{user_public_id} setup and
 		remove this endpoint.
 	*/
 
@@ -165,7 +165,7 @@ func (cfg *ApiConfig) HandlerPutUsers(w http.ResponseWriter, r *http.Request) { 
 	}
 	updatedUser, err := cfg.DB.SetUserEmailPasswordByID(r.Context(), queryParams)
 	if errors.Is(err, sql.ErrNoRows) {
-		jsonutils.WriteError(w, http.StatusForbidden, err, "user does not exist. How did you do this?")
+		jsonutils.WriteError(w, http.StatusNotFound, err, "user does not exist. How did you do this?")
 		return
 	} else if err != nil {
 		jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database")
@@ -179,7 +179,7 @@ func (cfg *ApiConfig) HandlerPutUsers(w http.ResponseWriter, r *http.Request) { 
 
 }
 
-// PUT /api/users/{public_user_id}
+// PUT /api/users/{user_public_id}
 func (cfg *ApiConfig) HandlerPutUsersByID(w http.ResponseWriter, r *http.Request) {
 	// function to UPDATE specific user by public ID
 	// requires isadmin status from accessing user
@@ -192,9 +192,9 @@ func (cfg *ApiConfig) HandlerPutUsersByID(w http.ResponseWriter, r *http.Request
 	}
 
 	// 2. retrieve target user from uri
-	pid := r.PathValue("public_user_id")
-	if len(pid) != cfg.PublicIDLength {
-		jsonutils.WriteError(w, http.StatusBadRequest, errors.New("incorrect public ID length"), "invalid public ID length provided in endpoint")
+	pid, err := strutils.GetPublicIDFromPathValue("user_public_id", cfg.PublicIDLength, r)
+	if err != nil {
+		jsonutils.WriteError(w, http.StatusBadRequest, err, "incorrect path value length")
 		return
 	}
 
@@ -273,7 +273,7 @@ func (cfg *ApiConfig) HandlerGetUsers(w http.ResponseWriter, r *http.Request) { 
 	jsonutils.WriteJSON(w, http.StatusOK, response)
 }
 
-func (cfg *ApiConfig) HandlerGetUsersByID(w http.ResponseWriter, r *http.Request) { // GET /api/users/{public_user_id}
+func (cfg *ApiConfig) HandlerGetUsersByID(w http.ResponseWriter, r *http.Request) { // GET /api/users/{user_public_id}
 	/*
 		Handler function to retrieve a full user (including is_admin) based on the UUID. This needs to be accessible to all clients, even unauthenticated
 		ones, because a visitor needs to be able to see who is calling him. I might decide to change this at a later date though.
@@ -294,7 +294,11 @@ func (cfg *ApiConfig) HandlerGetUsersByID(w http.ResponseWriter, r *http.Request
 	}
 
 	// 2. get user ID from request uri
-	pid := r.PathValue("public_user_id")
+	pid, err := strutils.GetPublicIDFromPathValue("user_public_id", cfg.PublicIDLength, r)
+	if err != nil {
+		jsonutils.WriteError(w, http.StatusBadRequest, err, "incorrect path value length")
+		return
+	}
 
 	// 3. check for validity
 	if len(pid) != cfg.PublicIDLength {

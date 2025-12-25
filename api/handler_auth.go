@@ -11,6 +11,7 @@ import (
 	"github.com/dcrauwels/goqueue/auth"
 	"github.com/dcrauwels/goqueue/internal/database"
 	"github.com/dcrauwels/goqueue/jsonutils"
+	"github.com/dcrauwels/goqueue/strutils"
 	"github.com/google/uuid"
 )
 
@@ -297,7 +298,11 @@ func (cfg *ApiConfig) HandlerRevokeRefreshToken(w http.ResponseWriter, r *http.R
 	*/
 
 	// 1. Get userID from URI
-	pathUserPublicID := r.PathValue("user_public_id")
+	pathUserPublicID, err := strutils.GetPublicIDFromPathValue("user_public_id", cfg.PublicIDLength, r)
+	if err != nil {
+		jsonutils.WriteError(w, http.StatusBadRequest, err, "incorrect path value length")
+		return
+	}
 
 	// 2. Authenticate from context: get user and check if admin (and if URI == accessing user, redirect to /api/logout)
 	accessingUser, err := auth.UserFromContext(w, r, cfg.DB)
@@ -335,7 +340,7 @@ func (cfg *ApiConfig) HandlerRevokeRefreshToken(w http.ResponseWriter, r *http.R
 func (cfg *ApiConfig) HandlerRevokeAllRefreshTokens(w http.ResponseWriter, r *http.Request) { // POST /api/revoke
 	/*
 		Function for taking the rather nuclear option of revoking all refresh tokens. This means all users are instantly logged out.
-		Like POST /api/revoke/{user_id} this should be restricted to admin type users only. Part of me wonders whether to have this at all.
+		Like POST /api/revoke/{user_public_id} this should be restricted to admin type users only. Part of me wonders whether to have this at all.
 	*/
 
 	// 1. Authenticate from context: get user and check if admin

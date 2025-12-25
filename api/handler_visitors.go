@@ -105,18 +105,22 @@ func (cfg *ApiConfig) HandlerPostVisitors(w http.ResponseWriter, r *http.Request
 	jsonutils.WriteJSON(w, http.StatusCreated, response)
 }
 
-func (cfg *ApiConfig) HandlerPutVisitorsByPublicID(w http.ResponseWriter, r *http.Request) { // PUT /api/visitors/{public_visitor_id}
+func (cfg *ApiConfig) HandlerPutVisitorsByPublicID(w http.ResponseWriter, r *http.Request) { // PUT /api/visitors/{visitor_public_id}
 	/*
-		Handler function for dealing with PUT requests to the /api/visitors/{visitor_id} endpoint.
+		Handler function for dealing with PUT requests to the /api/visitors/{visitor_public_id} endpoint.
 		Can be accessed only by users. While one can imagine cases where visitors want to edit their name
 		after the fact (e.g. because of typos) I think the added value of allowing them to do so is minimal.
 	*/
 
 	// 1. get target visitor from URI
-	pvid := r.PathValue("public_visitor_id")
+	pvid, err := strutils.GetPublicIDFromPathValue("visitor_public_id", cfg.PublicIDLength, r)
+	if err != nil {
+		jsonutils.WriteError(w, http.StatusBadRequest, err, "incorrect path value length")
+		return
+	}
 
 	// 2. get user authentication from context
-	_, err := auth.UserFromContext(w, r, cfg.DB) // I don't need information about the user itself, just whether a user ID is present in the request context.
+	_, err = auth.UserFromContext(w, r, cfg.DB) // I don't need information about the user itself, just whether a user ID is present in the request context.
 	if err != nil {
 		jsonutils.WriteError(w, http.StatusUnauthorized, err, "user authentication required to access PUT /api/visitors")
 		return
@@ -237,9 +241,13 @@ func (cfg *ApiConfig) HandlerGetVisitors(w http.ResponseWriter, r *http.Request)
 	jsonutils.WriteJSON(w, http.StatusOK, response)
 }
 
-func (cfg *ApiConfig) HandlerGetVisitorsByPublicID(w http.ResponseWriter, r *http.Request) { // GET /api/visitors/{public_visitor_id}
+func (cfg *ApiConfig) HandlerGetVisitorsByPublicID(w http.ResponseWriter, r *http.Request) { // GET /api/visitors/{visitor_public_id}
 	// 1. get visitor ID from endpoint
-	pvid := r.PathValue("public_visitor_id")
+	pvid, err := strutils.GetPublicIDFromPathValue("visitor_public_id", cfg.PublicIDLength, r)
+	if err != nil {
+		jsonutils.WriteError(w, http.StatusBadRequest, err, "incorrect path value length")
+		return
+	}
 
 	// 2. get auth from context
 	_, userErr := auth.UserFromContext(w, r, cfg.DB)                      // not interested in the actual user itself

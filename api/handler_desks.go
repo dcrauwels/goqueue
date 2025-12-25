@@ -5,6 +5,8 @@ import (
 	"net/http"
 
 	"github.com/dcrauwels/goqueue/internal/database"
+	"github.com/dcrauwels/goqueue/jsonutils"
+	"github.com/dcrauwels/goqueue/strutils"
 	"github.com/google/uuid"
 )
 
@@ -44,11 +46,17 @@ func (cfg *ApiConfig) HandlerPostDesks(w http.ResponseWriter, r *http.Request) {
 	// 4. return result
 }
 
-// PUT /api/desks/{public_desk_id}
+// PUT /api/desks/{desk_public_id}
 func (cfg *ApiConfig) HandlerPutDesksByPublicID(w http.ResponseWriter, r *http.Request) {
 	// 1. check auth
-	// 2. run query SetDesksByPublicID
-	// 3. return result
+	// 2. get path value
+	dpid, err := strutils.GetPublicIDFromPathValue("desk_public_id", cfg.PublicIDLength, r)
+	if err != nil {
+		jsonutils.WriteError(w, http.StatusBadRequest, err, "incorrect path value length")
+		return
+	}
+	// 3. run query SetDesksByPublicID
+	// 4. return result
 }
 
 // GET /api/desks
@@ -58,8 +66,14 @@ func (cfg *ApiConfig) HandlerGetDesks(w http.ResponseWriter, r *http.Request) {
 	// 3. return result
 }
 
-// GET /api/desks/{public_desk_id}
+// GET /api/desks/{desk_public_id}
 func (cfg *ApiConfig) HandlerGetDesksByPublicID(w http.ResponseWriter, r *http.Request) {
-	// 1. run query GetDesksByPublicID
-	// 2. return result
+	// 1. get path value
+	dpid, err := strutils.GetPublicIDFromPathValue("desk_public_id", cfg.PublicIDLength, r)
+	if err != nil {
+		jsonutils.WriteError(w, http.StatusBadRequest, err, "incorrect path value length")
+		return
+	}
+	// 2. run query GetDesksByPublicID
+	// 3. return result
 }
