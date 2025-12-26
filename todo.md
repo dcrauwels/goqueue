@@ -57,10 +57,9 @@
 - [x] Followup on previous todo: fix auth_test.go - specifically the JWT unit test that currently takes a uuid.new() as input.
 - [x] POST & PUT refresh_tokens
 - [x] POST & PUT purposes
-- [ ] A number of api paths have '{public_visitor_id}' in them and a number have '{user_public_id}'. Unify to latter style across main.go and handlers.
-- [ ] POST & PUT service_logs
-- [ ] POST & PUT users
-- [ ] Follow down the road to fix the handler functions. ??
+- [x] A number of api paths have '{public_visitor_id}' in them and a number have '{user_public_id}'. Unify to latter style across main.go and handlers.
+- [x] POST & PUT service_logs
+- [x] Follow down the road to fix the handler functions.
 
 ## handler_desks.go
 - [x] Write DB migration to drop the desk number column and instead implement a desk name string. That way you can have desk 'F1' 'S1' etc. There is no real reason to restrict it to numbers other than if you are going to pass the desk number the public ID. But I don't think that makes sense for a number of reasons.

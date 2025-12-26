@@ -62,7 +62,9 @@ func GetPublicIDFromPathValue(path string, publicIDLength int, r *http.Request) 
 	// used for retrieving public IDs from path values
 	// e.g. the value for 'user_public_id' in GET /api/users/{user_public_id}
 	// checks if the public ID provided in the path is of the correct length as specified in the .env config file
+
 	ErrIncorrectPublicIDLength := errors.New("path value public ID has incorrect length")
+
 	result := r.PathValue(path)
 	if len(result) != publicIDLength {
 		return "", ErrIncorrectPublicIDLength

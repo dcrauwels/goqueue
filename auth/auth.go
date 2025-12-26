@@ -11,10 +11,9 @@ import (
 )
 
 var ErrWrongUserType = errors.New("usertype supplied in JWT is not valid")
-
 var ErrVisitorMismatch = errors.New("accessing visitor is not visitor identified in endpoint URI")
-
 var ErrUserInactive = errors.New("user account is inactive")
+var ErrUserNotAdmin = errors.New("user account is not an admin")
 
 type configReader interface {
 	GetSecret() string
