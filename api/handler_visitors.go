@@ -134,11 +134,10 @@ func (cfg *ApiConfig) HandlerPutVisitorsByPublicID(w http.ResponseWriter, r *htt
 		jsonutils.WriteError(w, http.StatusBadRequest, err, "JSON formatting invalid")
 		return
 	}
-	request.PublicID = pvid
 
 	// 4. run query
 	queryParams := database.SetVisitorByPublicIDParams{
-		PublicID:        request.PublicID,
+		PublicID:        pvid,
 		Name:            strutils.InitNullString(request.Name),
 		PurposePublicID: request.PurposePublicID,
 		Status:          request.Status,

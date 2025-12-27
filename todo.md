@@ -16,6 +16,7 @@
 - [x] All of my http.Redirects are wrong. They more or less all point to "/api/login" which is wrong. It should be an HTML login page like /login. (I think.)
 - [x] Currently there are no checks for user.IsActive. This needs to either go in AuthUserMiddleware or in all of the individual user authentication checks in handlers. The bottom line is: do we want to allow a user to present an access / refresh token for an inactive account and get that ID added to their context? > No, we don't, so it should be blocked at the AuthUserMiddleware level, where we clear the cookie, throw a 401 Unauthorized error, clear cookies and send them to login. (Also see previous todo.)
 - [ ] What range of statuses will be allowed? There are multiple NYI's for this, mostly in auth_visitors.go.
+- [ ] Double-check *all* authentication checks in handlers if user.IsActive is taken into account. Compare to how it's done in HandlerPostDesks in handler_desks.go
 
 ## Statuses
 - [ ] Think about whether statuses should be hardcoded or user-defined (like purposes)
@@ -52,23 +53,24 @@
 - [?] Update the handlers to have the queryparameters and responseparameter structs include public_ids.
 - [x] POST & PUT & GET users
 - [x] POST & PUT & GET visitors
-- [ ] POST & PUT desks > need to do the handler_desks.go stuff first
+- [x] POST & PUT desks > need to do the handler_desks.go stuff first
 - [x] Refresh tokens will only hold the user public ID as foreign key. This means JWT implementation needs to change.
 - [x] Followup on previous todo: fix auth_test.go - specifically the JWT unit test that currently takes a uuid.new() as input.
 - [x] POST & PUT refresh_tokens
 - [x] POST & PUT purposes
 - [x] A number of api paths have '{public_visitor_id}' in them and a number have '{user_public_id}'. Unify to latter style across main.go and handlers.
-- [x] POST & PUT service_logs
+- [ ] POST & PUT service_logs
 - [x] Follow down the road to fix the handler functions.
 
 ## handler_desks.go
 - [x] Write DB migration to drop the desk number column and instead implement a desk name string. That way you can have desk 'F1' 'S1' etc. There is no real reason to restrict it to numbers other than if you are going to pass the desk number the public ID. But I don't think that makes sense for a number of reasons.
 - [x] Update queries for new desks schema.
-- [ ] POST /api/desks
-- [ ] PUT /api/desks/{public_desk_id}
-- [ ] GET /api/desks
-- [ ] GET /api/desks/{public_desk_id}
-- [ ] Currently the first 3 functions require userauth, the last doesn't. Reasoning being that when a servicelog is created for a user being called to a desk the desk pid is provided and the user needs to know what actual desk they are going to. 
+- [x] POST /api/desks
+- [x] PUT /api/desks/{public_desk_id}
+- [x] GET /api/desks
+- [ ] Should GET /api/desks require authentication? Probably.
+- [x] GET /api/desks/{public_desk_id}
+- [x] Currently the first 3 functions require userauth, the last doesn't. Is that a problem? > No. Reasoning being that when a servicelog is created for a visitor being called to a desk the desk pid is provided and the visitor needs to know what actual desk (e.g. desk.Name) they are going to. And they can get that information by querying GET /api/desks/{pid_from_service_log}
 - [ ] some sort of GET request for active desks, perhaps through a query parameter. Note that I need to resolve the QP issue in /api/visitors first
 
 ## Visitor daily_ticket_number implementation
