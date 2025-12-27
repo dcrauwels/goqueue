@@ -82,6 +82,7 @@
 
 ## Service log implementation
 - [x] Define endpoints for /api/servicelogs. Probably POST, GET, PUT.
+- [x] Write a migration for the service_logs table to accommodate public ids in tables users, visitors, desks.
 - [ ] Define a GET /api/visitors/{visitor_id}/status endpoint. This is meant for a visitor to check their own status ideally.
 - [ ] Define a /api/queue endpoint which takes GET requests and is meant for a screen to display all WAITING / CALLED / SERVING visitors.
 - [ ] Write handlers for all of the aforementioned endpoints.

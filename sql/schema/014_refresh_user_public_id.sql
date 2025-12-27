@@ -25,7 +25,7 @@ ADD COLUMN user_id UUID NOT NULL;
 UPDATE refresh_tokens t
 SET user_id = u.id
 FROM users u
-WHERE t.user_public_id = u.public_id
+WHERE t.user_public_id = u.public_id;
 
 ALTER TABLE refresh_tokens
 ADD CONSTRAINT refresh_tokens_user_id_fkey 
