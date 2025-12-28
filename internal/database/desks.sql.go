@@ -128,7 +128,7 @@ func (q *Queries) GetDesksByPublicID(ctx context.Context, publicID string) (Desk
 
 const setDesksByPublicID = `-- name: SetDesksByPublicID :one
 UPDATE desks
-SET name = $2, description = $3, is_active = $4
+SET name = $2, description = $3, is_active = $4, updated_at = NOW()
 WHERE public_id = $1
 RETURNING id, description, is_active, public_id, name
 `

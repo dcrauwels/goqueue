@@ -100,6 +100,7 @@ func main() {
 	mux.Handle("POST /api/servicelogs", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerPostServicelogs)))                          // NYI
 	mux.Handle("PUT /api/servicelogs/{servicelog_public_id}", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerPutServicelogsByID))) // NYI
 	mux.Handle("GET /api/servicelogs", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerGetServicelogs)))                            // NYI
+	mux.HandleFunc("GET /api/servicelogs/{servicelog_public_id}", apiCfg.HandlerGetServicelogsByPublicID)
 	//mux.HandleFunc("GET /api/servicelogs/{visitor_public_id}", apiCfg.HandlerGetServicelogsByVisitorID)                                   // NYI not convinced this is needed
 
 	/// register handlers from the admin package

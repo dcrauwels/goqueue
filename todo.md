@@ -83,11 +83,13 @@
 ## Service log implementation
 - [x] Define endpoints for /api/servicelogs. Probably POST, GET, PUT.
 - [x] Write a migration for the service_logs table to accommodate public ids in tables users, visitors, desks.
-- [ ] Define a GET /api/visitors/{visitor_id}/status endpoint. This is meant for a visitor to check their own status ideally.
+- [?] Define a GET /api/servicelogs/{visitor_id}/status endpoint. This is meant for a visitor to check their own status ideally.
+- [ ] Instead of the todo above, how about query parameters under GET /api/servicelogs?user=user_public_id&visitor=visitor_public_id&desk=desk_public_id ? 
 - [ ] Define a /api/queue endpoint which takes GET requests and is meant for a screen to display all WAITING / CALLED / SERVING visitors.
 - [ ] Write handlers for all of the aforementioned endpoints.
 - [x] We have the same authentication issue for visitors that we have for GET /api/visitors/{visitor_id}. Basically the question is: if a third party that isn't the visitor themselves knows the URI to the visitor status page and can get information from the service log, is that a problem? Does it matter if someone else can see visitors being called? 
 - [x] Why is it necessary again to have both a visitor and a service log implementation? Given that a visitor only goes in one direction: from waiting, to serving, to served, what does the log add?
+
 
 # Nice to have
 - [x] Specify the different errors auth.ValidateJWT can spit out to match the reasons for throwing an error. (Token expired, invalid, etc.) > turns out the JWT package has these predefined.

@@ -136,7 +136,6 @@ func (cfg *ApiConfig) HandlerPutDesksByPublicID(w http.ResponseWriter, r *http.R
 	response := DesksResponseParameters{}
 	response.Populate(desk)
 	jsonutils.WriteJSON(w, http.StatusOK, response)
-	return
 }
 
 // GET /api/desks

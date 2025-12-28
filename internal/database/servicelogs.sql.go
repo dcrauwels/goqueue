@@ -7,12 +7,10 @@ package database
 
 import (
 	"context"
-
-	"github.com/google/uuid"
 )
 
 const createServiceLogs = `-- name: CreateServiceLogs :one
-INSERT INTO service_logs (id, public_id, created_at, updated_at, visitor_id, user_id, desk_id, called_at, is_active)
+INSERT INTO service_logs (id, public_id, created_at, updated_at, visitor_public_id, user_public_id, desk_public_id, called_at, is_active)
 VALUES (
     gen_random_uuid(),
     $1,
@@ -24,40 +22,40 @@ VALUES (
     NOW(),
     true
 )
-RETURNING id, created_at, updated_at, visitor_id, user_id, desk_id, called_at, is_active, public_id
+RETURNING id, created_at, updated_at, called_at, is_active, public_id, user_public_id, visitor_public_id, desk_public_id
 `
 
 type CreateServiceLogsParams struct {
-	PublicID  string
-	VisitorID uuid.UUID
-	UserID    uuid.UUID
-	DeskID    uuid.UUID
+	PublicID        string
+	VisitorPublicID string
+	UserPublicID    string
+	DeskPublicID    string
 }
 
 func (q *Queries) CreateServiceLogs(ctx context.Context, arg CreateServiceLogsParams) (ServiceLog, error) {
 	row := q.db.QueryRowContext(ctx, createServiceLogs,
 		arg.PublicID,
-		arg.VisitorID,
-		arg.UserID,
-		arg.DeskID,
+		arg.VisitorPublicID,
+		arg.UserPublicID,
+		arg.DeskPublicID,
 	)
 	var i ServiceLog
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.VisitorID,
-		&i.UserID,
-		&i.DeskID,
 		&i.CalledAt,
 		&i.IsActive,
 		&i.PublicID,
+		&i.UserPublicID,
+		&i.VisitorPublicID,
+		&i.DeskPublicID,
 	)
 	return i, err
 }
 
 const getActiveServiceLogs = `-- name: GetActiveServiceLogs :many
-SELECT id, created_at, updated_at, visitor_id, user_id, desk_id, called_at, is_active, public_id FROM service_logs
+SELECT id, created_at, updated_at, called_at, is_active, public_id, user_public_id, visitor_public_id, desk_public_id FROM service_logs
 WHERE is_active = true
 `
 
@@ -74,12 +72,12 @@ func (q *Queries) GetActiveServiceLogs(ctx context.Context) ([]ServiceLog, error
 			&i.ID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.VisitorID,
-			&i.UserID,
-			&i.DeskID,
 			&i.CalledAt,
 			&i.IsActive,
 			&i.PublicID,
+			&i.UserPublicID,
+			&i.VisitorPublicID,
+			&i.DeskPublicID,
 		); err != nil {
 			return nil, err
 		}
@@ -95,12 +93,12 @@ func (q *Queries) GetActiveServiceLogs(ctx context.Context) ([]ServiceLog, error
 }
 
 const getActiveServiceLogsByUserID = `-- name: GetActiveServiceLogsByUserID :many
-SELECT id, created_at, updated_at, visitor_id, user_id, desk_id, called_at, is_active, public_id FROM service_logs
-where is_active = true AND user_id = $1
+SELECT id, created_at, updated_at, called_at, is_active, public_id, user_public_id, visitor_public_id, desk_public_id FROM service_logs
+where is_active = true AND user_public_id = $1
 `
 
-func (q *Queries) GetActiveServiceLogsByUserID(ctx context.Context, userID uuid.UUID) ([]ServiceLog, error) {
-	rows, err := q.db.QueryContext(ctx, getActiveServiceLogsByUserID, userID)
+func (q *Queries) GetActiveServiceLogsByUserID(ctx context.Context, userPublicID string) ([]ServiceLog, error) {
+	rows, err := q.db.QueryContext(ctx, getActiveServiceLogsByUserID, userPublicID)
 	if err != nil {
 		return nil, err
 	}
@@ -112,12 +110,12 @@ func (q *Queries) GetActiveServiceLogsByUserID(ctx context.Context, userID uuid.
 			&i.ID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.VisitorID,
-			&i.UserID,
-			&i.DeskID,
 			&i.CalledAt,
 			&i.IsActive,
 			&i.PublicID,
+			&i.UserPublicID,
+			&i.VisitorPublicID,
+			&i.DeskPublicID,
 		); err != nil {
 			return nil, err
 		}
@@ -133,7 +131,7 @@ func (q *Queries) GetActiveServiceLogsByUserID(ctx context.Context, userID uuid.
 }
 
 const getServiceLogs = `-- name: GetServiceLogs :many
-SELECT id, created_at, updated_at, visitor_id, user_id, desk_id, called_at, is_active, public_id FROM service_logs
+SELECT id, created_at, updated_at, called_at, is_active, public_id, user_public_id, visitor_public_id, desk_public_id FROM service_logs
 `
 
 func (q *Queries) GetServiceLogs(ctx context.Context) ([]ServiceLog, error) {
@@ -149,12 +147,12 @@ func (q *Queries) GetServiceLogs(ctx context.Context) ([]ServiceLog, error) {
 			&i.ID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.VisitorID,
-			&i.UserID,
-			&i.DeskID,
 			&i.CalledAt,
 			&i.IsActive,
 			&i.PublicID,
+			&i.UserPublicID,
+			&i.VisitorPublicID,
+			&i.DeskPublicID,
 		); err != nil {
 			return nil, err
 		}
@@ -170,7 +168,7 @@ func (q *Queries) GetServiceLogs(ctx context.Context) ([]ServiceLog, error) {
 }
 
 const getServiceLogsByPublicID = `-- name: GetServiceLogsByPublicID :one
-SELECT id, created_at, updated_at, visitor_id, user_id, desk_id, called_at, is_active, public_id FROM service_logs
+SELECT id, created_at, updated_at, called_at, is_active, public_id, user_public_id, visitor_public_id, desk_public_id FROM service_logs
 WHERE public_id = $1
 `
 
@@ -181,12 +179,50 @@ func (q *Queries) GetServiceLogsByPublicID(ctx context.Context, publicID string)
 		&i.ID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.VisitorID,
-		&i.UserID,
-		&i.DeskID,
 		&i.CalledAt,
 		&i.IsActive,
 		&i.PublicID,
+		&i.UserPublicID,
+		&i.VisitorPublicID,
+		&i.DeskPublicID,
+	)
+	return i, err
+}
+
+const setServiceLogsByPublicID = `-- name: SetServiceLogsByPublicID :one
+UPDATE service_logs
+SET visitor_public_id = $2, user_public_id = $3, desk_public_id = $4, is_active = $5, updated_at = NOW()
+WHERE public_id = $1
+RETURNING id, created_at, updated_at, called_at, is_active, public_id, user_public_id, visitor_public_id, desk_public_id
+`
+
+type SetServiceLogsByPublicIDParams struct {
+	PublicID        string
+	VisitorPublicID string
+	UserPublicID    string
+	DeskPublicID    string
+	IsActive        bool
+}
+
+func (q *Queries) SetServiceLogsByPublicID(ctx context.Context, arg SetServiceLogsByPublicIDParams) (ServiceLog, error) {
+	row := q.db.QueryRowContext(ctx, setServiceLogsByPublicID,
+		arg.PublicID,
+		arg.VisitorPublicID,
+		arg.UserPublicID,
+		arg.DeskPublicID,
+		arg.IsActive,
+	)
+	var i ServiceLog
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.CalledAt,
+		&i.IsActive,
+		&i.PublicID,
+		&i.UserPublicID,
+		&i.VisitorPublicID,
+		&i.DeskPublicID,
 	)
 	return i, err
 }

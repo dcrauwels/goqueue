@@ -39,15 +39,15 @@ type RefreshToken struct {
 }
 
 type ServiceLog struct {
-	ID        uuid.UUID
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	VisitorID uuid.UUID
-	UserID    uuid.UUID
-	DeskID    uuid.UUID
-	CalledAt  time.Time
-	IsActive  bool
-	PublicID  string
+	ID              uuid.UUID
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+	CalledAt        time.Time
+	IsActive        bool
+	PublicID        string
+	UserPublicID    string
+	VisitorPublicID string
+	DeskPublicID    string
 }
 
 type TicketCounter struct {

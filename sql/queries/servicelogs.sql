@@ -11,10 +11,10 @@ WHERE is_active = true;
 
 -- name: GetActiveServiceLogsByUserID :many
 SELECT * FROM service_logs
-where is_active = true AND user_id = $1;
+where is_active = true AND user_public_id = $1;
 
 -- name: CreateServiceLogs :one
-INSERT INTO service_logs (id, public_id, created_at, updated_at, visitor_id, user_id, desk_id, called_at, is_active)
+INSERT INTO service_logs (id, public_id, created_at, updated_at, visitor_public_id, user_public_id, desk_public_id, called_at, is_active)
 VALUES (
     gen_random_uuid(),
     $1,
@@ -26,4 +26,10 @@ VALUES (
     NOW(),
     true
 )
+RETURNING *;
+
+-- name: SetServiceLogsByPublicID :one
+UPDATE service_logs
+SET visitor_public_id = $2, user_public_id = $3, desk_public_id = $4, is_active = $5, updated_at = NOW()
+WHERE public_id = $1
 RETURNING *;

@@ -22,6 +22,6 @@ WHERE is_active = TRUE;
 
 -- name: SetDesksByPublicID :one
 UPDATE desks
-SET name = $2, description = $3, is_active = $4
+SET name = $2, description = $3, is_active = $4, updated_at = NOW()
 WHERE public_id = $1
 RETURNING *;

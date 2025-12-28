@@ -172,7 +172,7 @@ func (q *Queries) GetPurposesByPublicID(ctx context.Context, publicID string) (P
 
 const setPurpose = `-- name: SetPurpose :one
 UPDATE purposes
-SET purpose_name = $2, parent_purpose_id = $3
+SET purpose_name = $2, parent_purpose_id = $3, updated_at = NOW()
 WHERE id = $1
 RETURNING id, created_at, updated_at, purpose_name, parent_purpose_id, public_id
 `
@@ -199,7 +199,7 @@ func (q *Queries) SetPurpose(ctx context.Context, arg SetPurposeParams) (Purpose
 
 const setPurposeByPublicID = `-- name: SetPurposeByPublicID :one
 UPDATE purposes
-SET purpose_name = $2, parent_purpose_id = $3
+SET purpose_name = $2, parent_purpose_id = $3, updated_at = NOW()
 WHERE public_id = $1
 RETURNING id, created_at, updated_at, purpose_name, parent_purpose_id, public_id
 `
@@ -226,7 +226,7 @@ func (q *Queries) SetPurposeByPublicID(ctx context.Context, arg SetPurposeByPubl
 
 const setPurposeName = `-- name: SetPurposeName :one
 UPDATE purposes
-SET purpose_name = $2
+SET purpose_name = $2, updated_at = NOW()
 WHERE id = $1
 RETURNING id, created_at, updated_at, purpose_name, parent_purpose_id, public_id
 `
@@ -252,7 +252,7 @@ func (q *Queries) SetPurposeName(ctx context.Context, arg SetPurposeNameParams) 
 
 const setPurposeParentID = `-- name: SetPurposeParentID :one
 UPDATE purposes
-SET parent_purpose_id = $2
+SET parent_purpose_id = $2, updated_at = NOW()
 WHERE id = $1
 RETURNING id, created_at, updated_at, purpose_name, parent_purpose_id, public_id
 `
@@ -278,7 +278,7 @@ func (q *Queries) SetPurposeParentID(ctx context.Context, arg SetPurposeParentID
 
 const setPurposeParentIDByParentPurposeName = `-- name: SetPurposeParentIDByParentPurposeName :one
 UPDATE purposes
-SET parent_purpose_id = (SELECT purposes.id FROM purposes WHERE purposes.purpose_name = $2)
+SET parent_purpose_id = (SELECT purposes.id FROM purposes WHERE purposes.purpose_name = $2), updated_at = NOW()
 WHERE purposes.id = $1
 RETURNING id, created_at, updated_at, purpose_name, parent_purpose_id, public_id
 `

@@ -31,30 +31,30 @@ WHERE parent_purpose_id = $1;
 
 -- name: SetPurpose :one
 UPDATE purposes
-SET purpose_name = $2, parent_purpose_id = $3
+SET purpose_name = $2, parent_purpose_id = $3, updated_at = NOW()
 WHERE id = $1
 RETURNING *;
 
 -- name: SetPurposeByPublicID :one
 UPDATE purposes
-SET purpose_name = $2, parent_purpose_id = $3
+SET purpose_name = $2, parent_purpose_id = $3, updated_at = NOW()
 WHERE public_id = $1
 RETURNING *;
 
 -- name: SetPurposeName :one
 UPDATE purposes
-SET purpose_name = $2
+SET purpose_name = $2, updated_at = NOW()
 WHERE id = $1
 RETURNING *;
 
 -- name: SetPurposeParentID :one
 UPDATE purposes
-SET parent_purpose_id = $2
+SET parent_purpose_id = $2, updated_at = NOW()
 WHERE id = $1
 RETURNING *;
 
 -- name: SetPurposeParentIDByParentPurposeName :one
 UPDATE purposes
-SET parent_purpose_id = (SELECT purposes.id FROM purposes WHERE purposes.purpose_name = $2)
+SET parent_purpose_id = (SELECT purposes.id FROM purposes WHERE purposes.purpose_name = $2), updated_at = NOW()
 WHERE purposes.id = $1
 RETURNING *;

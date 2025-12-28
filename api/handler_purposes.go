@@ -41,11 +41,12 @@ func (prp *PurposesResponseParameters) Populate(p database.Purpose) {
 var ErrNotAdmin = errors.New("user does not have admin status")
 
 // Helper function that handles the common logic
-func (cfg *ApiConfig) handlePurposeOperation(
+func handlePurposeOperation[T any](
+	cfg *ApiConfig,
 	w http.ResponseWriter,
 	r *http.Request,
 	operation string, // http operation name (POST, PUT, GET etc.) for error messages
-	requestPtr any, // pointer to request parameter struct (like PurposesPutRequestParameters etc.)
+	requestPtr *T, // pointer to request parameter struct (like PurposesPutRequestParameters etc.)
 	dbQuery func() (database.Purpose, error), // function to execute the database query, so either cfg.DB.CreatePurpose() or cfg.DB.SetPurpose()
 ) {
 	/*
@@ -63,7 +64,7 @@ func (cfg *ApiConfig) handlePurposeOperation(
 
 	// 2. read request (delegated to caller)
 	decoder := json.NewDecoder(r.Body)
-	err = decoder.Decode(&requestPtr)
+	err = decoder.Decode(requestPtr)
 	if err != nil {
 		jsonutils.WriteError(w, http.StatusBadRequest, err, fmt.Sprintf("user provided invalid JSON in a request to %s /api/purposes", operation))
 		return
@@ -101,10 +102,10 @@ func (cfg *ApiConfig) handlePurposeOperation(
 
 // POST /api/purposes (admin only)
 func (cfg *ApiConfig) HandlerPostPurposes(w http.ResponseWriter, r *http.Request) {
-	var request PurposesRequestParameters // note that we only need to inituate a PurposeRequestParameters struct and it is populated by handlePurposeOperation
+	request := &PurposesRequestParameters{} // note that we only need to inituate a PurposeRequestParameters struct and it is populated by handlePurposeOperation
 
-	cfg.handlePurposeOperation(w, r, "POST",
-		&request,
+	handlePurposeOperation(cfg, w, r, "POST",
+		request,
 		// Database operation function
 		func() (database.Purpose, error) {
 			queryParams := database.CreatePurposeParams{
@@ -119,7 +120,7 @@ func (cfg *ApiConfig) HandlerPostPurposes(w http.ResponseWriter, r *http.Request
 
 // PUT /api/purposes/{purpose_public_id} (admin only)
 func (cfg *ApiConfig) HandlerPutPurposesByID(w http.ResponseWriter, r *http.Request) {
-	var request PurposesRequestParameters // note that we only need to inituate a PurposeRequestParameters struct and it is populated by handlePurposeOperation
+	request := &PurposesRequestParameters{} // note that we only need to inituate a PurposeRequestParameters struct and it is populated by handlePurposeOperation
 
 	// retrieve request ID
 	ppid, err := strutils.GetPublicIDFromPathValue("purpose_public_id", cfg.PublicIDLength, r)
@@ -128,12 +129,9 @@ func (cfg *ApiConfig) HandlerPutPurposesByID(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	cfg.handlePurposeOperation(w, r, "PUT",
+	handlePurposeOperation(cfg, w, r, "PUT",
 		// Decoder function
-		func(interface{}) error {
-			decoder := json.NewDecoder(r.Body)
-			return decoder.Decode(&request)
-		},
+		request,
 		// Database operation function
 		func() (database.Purpose, error) {
 			queryParams := database.SetPurposeByPublicIDParams{

@@ -165,7 +165,7 @@ func (q *Queries) GetRefreshTokensByUserPublicID(ctx context.Context, userPublic
 const revokeRefreshTokenByToken = `-- name: RevokeRefreshTokenByToken :one
 UPDATE refresh_tokens
 SET revoked_at = NOW(), updated_at = NOW()
-WHERE TOKEN = $1
+WHERE token = $1
 RETURNING token, created_at, updated_at, expires_at, revoked_at, public_id, user_public_id
 `
 
