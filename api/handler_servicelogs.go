@@ -50,17 +50,14 @@ func (slrp *ServicelogsResponseParameters) Populate(sl database.ServiceLog) {
 }
 
 func handleServiceLogOperation[T any](
-	cfg *ApiConfig,
 	w http.ResponseWriter,
 	r *http.Request,
 	operation string,
 	requestPtr *T,
 	dbQuery func() (database.ServiceLog, error),
 ) {
-	// 1. check auth
-	// moved to specific functions
 
-	// 2. read request
+	// 1. read request
 	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(requestPtr)
 	if err != nil {
@@ -68,7 +65,7 @@ func handleServiceLogOperation[T any](
 		return
 	}
 
-	// 3. query DB
+	// 2. query DB
 	serviceLog, err := dbQuery()
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -79,7 +76,7 @@ func handleServiceLogOperation[T any](
 		return
 	}
 
-	// 4. write response
+	// 3. write response
 	response := ServicelogsResponseParameters{}
 	response.Populate(serviceLog)
 	var statusCode int
@@ -107,7 +104,6 @@ func (cfg *ApiConfig) HandlerPostServicelogs(w http.ResponseWriter, r *http.Requ
 	// 2. handleServiceLogOperation
 	request := &ServicelogsPOSTRequestParameters{}
 	handleServiceLogOperation(
-		cfg,
 		w,
 		r,
 		"POST",
@@ -144,7 +140,6 @@ func (cfg *ApiConfig) HandlerPutServicelogsByID(w http.ResponseWriter, r *http.R
 		return
 	}
 	handleServiceLogOperation(
-		cfg,
 		w,
 		r,
 		"PUT",
