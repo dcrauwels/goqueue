@@ -61,3 +61,10 @@ SET status = $2, updated_at = NOW() --status
 WHERE id = $1
 RETURNING *;
 
+-- name: ListVisitors :many
+SELECT * FROM visitors
+WHERE (sqlc.narg('status')::text IS NULL OR status = sqlc.narg('status'))
+    AND (sqlc.narg('purpose_public_id')::text IS NULL OR purpose_public_id = sqlc.narg('purpose_public_id'))
+    AND (sqlc.narg('start_date')::timestamp IS NULL OR created_at >= sqlc.narg('start_date'))
+    AND (sqlc.narg('end_date')::timestamp IS NULL OR created_at < sqlc.narg('end_date'))
+ORDER BY waiting_since ASC;

@@ -338,6 +338,60 @@ func (q *Queries) GetWaitingVisitorsByPurposePublicID(ctx context.Context, purpo
 	return items, nil
 }
 
+const listVisitors = `-- name: ListVisitors :many
+SELECT id, created_at, updated_at, waiting_since, name, status, daily_ticket_number, public_id, purpose_public_id FROM visitors
+WHERE ($1::text IS NULL OR status = $1)
+    AND ($2::text IS NULL OR purpose_public_id = $2)
+    AND ($3::timestamp IS NULL OR created_at >= $3)
+    AND ($4::timestamp IS NULL OR created_at < $4)
+ORDER BY waiting_since ASC
+`
+
+type ListVisitorsParams struct {
+	Status          sql.NullString
+	PurposePublicID sql.NullString
+	StartDate       sql.NullTime
+	EndDate         sql.NullTime
+}
+
+func (q *Queries) ListVisitors(ctx context.Context, arg ListVisitorsParams) ([]Visitor, error) {
+	rows, err := q.db.QueryContext(ctx, listVisitors,
+		arg.Status,
+		arg.PurposePublicID,
+		arg.StartDate,
+		arg.EndDate,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Visitor
+	for rows.Next() {
+		var i Visitor
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.WaitingSince,
+			&i.Name,
+			&i.Status,
+			&i.DailyTicketNumber,
+			&i.PublicID,
+			&i.PurposePublicID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const setVisitorByPublicID = `-- name: SetVisitorByPublicID :one
 UPDATE visitors
 SET name = $2, purpose_public_id = $3, status = $4, updated_at = NOW() -- status
