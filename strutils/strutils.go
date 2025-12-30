@@ -72,3 +72,12 @@ func GetPublicIDFromPathValue(path string, publicIDLength int, r *http.Request) 
 		return result, nil
 	}
 }
+
+func QueryParameterToNullString(s string) sql.NullString {
+	// used to convert strings retrieved from query parameters (e.g. through r.URL.Query().Get()) to sql.NullStrings.
+	// Empty query parameters are returned by r.URL.Query().Get() as "", which is why the Valid field uses the logic below.
+	return sql.NullString{
+		String: s,
+		Valid:  s != "",
+	}
+}
