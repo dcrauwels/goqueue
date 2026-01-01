@@ -35,6 +35,10 @@ func (cfg ApiConfig) GetEnv() string {
 	return cfg.Env
 }
 
+func (cfg ApiConfig) GeneratePublicID() string {
+	return cfg.PublicIDGenerator()
+}
+
 func (cfg *ApiConfig) CreateUser(w http.ResponseWriter, r *http.Request) {
 	cfg.HandlerPostUsers(w, r)
 

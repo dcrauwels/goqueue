@@ -179,8 +179,10 @@ The generic /api/visitors endpoint takes query parameters for GET requests. This
 
 **Query parameters for generic endpoint:**
 
-- `purpose`: string, takes a purpose name right now, but this is intractible due to purpose names being nonunique. Subject to change in a future build.
-- `status`: integer. NYI. 
+- `purpose`: public ID referring to the purpose in question. Frontend will need to show the corresponding purpose name for user legibility.
+- `status`: integer. NYI. Frontend will need to show the corresponding status name for user legibility.
+- `start_date`: ISO 8601 timestamp (YYYY-MM-DD). Inclusive. 
+- `end_date`: ISO 8601 timestamp (YYYY-MM-DD). Exclusive. 
 
 **Response parameters:**
 

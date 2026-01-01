@@ -84,7 +84,7 @@ func (cfg *ApiConfig) HandlerPostVisitors(w http.ResponseWriter, r *http.Request
 	// 4. create public ID
 	pid := cfg.PublicIDGenerator()
 
-	// 4. query DB: CreateVisitor
+	// 5. query DB: CreateVisitor
 	queryParams := database.CreateVisitorParams{
 		PublicID:          pid,
 		Name:              strutils.InitNullString(request.Name), // name is currently nullable.
@@ -98,7 +98,7 @@ func (cfg *ApiConfig) HandlerPostVisitors(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// 5. return response 201
+	// 6. return response 201
 	response := VisitorsResponseParameters{}
 	response.Populate(createdVisitor)
 	jsonutils.WriteJSON(w, http.StatusCreated, response)
@@ -232,26 +232,7 @@ func (cfg *ApiConfig) HandlerGetVisitorsByPublicID(w http.ResponseWriter, r *htt
 		return
 	}
 
-	// 2. get auth from context
-	_, userErr := auth.UserFromContext(w, r, cfg.DB)                      // not interested in the actual user itself
-	accessingVisitor, visitorErr := auth.VisitorFromContext(w, r, cfg.DB) // I think this is deprecated actually, see todo.md
-
-	// 3. authenticate: either for visitor with matching ID or user
-	if userErr != nil { // if userErr == nil then user authentication was provided and we are good to go
-		if visitorErr != nil { // so userErr != nil && visitorErr != nil > no authentication whatsoever is provided
-			jsonutils.WriteError(w, http.StatusUnauthorized, userErr, "authorization is required to access GET /api/visitors")
-			return
-		} else if pvid != accessingVisitor.PublicID { // visitors can only GET themselves
-			jsonutils.WriteError(w, http.StatusForbidden, userErr, "visitors are only allowed to GET their own ID at /api/visitors")
-			return
-		}
-	}
-
-	// 3.1 should I put redundancy here for the user auth?
-	// because now we just assume if userErr == nil everything is fine & dandy but that's a bit of a risk
-	// NYI
-
-	// 4. run query
+	// 2. run query
 	visitor, err := cfg.DB.GetVisitorsByPublicID(r.Context(), pvid)
 	if errors.Is(err, sql.ErrNoRows) {
 		jsonutils.WriteError(w, http.StatusNotFound, err, "visitor not found in database")
@@ -261,7 +242,7 @@ func (cfg *ApiConfig) HandlerGetVisitorsByPublicID(w http.ResponseWriter, r *htt
 		return
 	}
 
-	// 5. write response
+	// 3. write response
 	response := VisitorsResponseParameters{}
 	response.Populate(visitor)
 	jsonutils.WriteJSON(w, http.StatusOK, response)

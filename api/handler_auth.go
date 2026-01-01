@@ -162,14 +162,14 @@ func (cfg *ApiConfig) HandlerLoginUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 5. write cookies
-	auth.SetAuthCookies(w, userAccessToken, newRefreshToken, "user", cfg.AccessTokenDuration, cfg.RefreshTokenDuration)
-
-	// 6. return access token to user
+	// 5. return access token to user
 	respParams := userResponseParameters{}
 	respParams.populate(user, userAccessToken, newRefreshToken)
 
 	jsonutils.WriteJSON(w, http.StatusOK, respParams)
+
+	// 6. write cookies
+	auth.SetAuthCookies(w, userAccessToken, newRefreshToken, "user", cfg.AccessTokenDuration, cfg.RefreshTokenDuration)
 
 }
 
@@ -249,6 +249,9 @@ func (cfg *ApiConfig) HandlerRefreshUser(w http.ResponseWriter, r *http.Request)
 		UserRefreshToken: newRefreshToken.Token,
 	}
 	jsonutils.WriteJSON(w, http.StatusOK, respParams)
+
+	// 5. set cookies for user
+	auth.SetAuthCookies(w, userAccessToken, newRefreshToken.Token, "user", cfg.AccessTokenDuration, cfg.RefreshTokenDuration)
 }
 
 func (cfg *ApiConfig) HandlerLogoutUser(w http.ResponseWriter, r *http.Request) {

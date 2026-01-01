@@ -27,10 +27,10 @@
 ## GET /api/visitors 
 ### query parameters
 - [x] At least for the GET /api/visitors endpoint, we have real query parameters. E.g. GET /api/visitors?purpose=fun. I don't think these are implemented properly: they should be optional, in the sense that GET /api/visitors should just return ALL visitors, but I believe it only works right now if both query parameters are called, e.g. GET /api/visitors?purpose=&status=. > these are implemented properly, GET /api/visitors works. The way it is implemented right now in step 2 of HandlerGetVisitors() is that queryPurpose and queryStatus will be null value strings ("") when sending a request without any query parameters specified.
-- [ ] Filtering by date should be possible. > build a start_date and end_date QP
-- [ ] Update /docs/api.md to explain the new query parameters. start_date is inclusive, end_date is exclusive (similar to list indices)
+- [x] Filtering by date should be possible. > build a start_date and end_date QP
+- [x] Update /docs/api.md to explain the new query parameters. start_date is inclusive, end_date is exclusive (similar to list indices)
 ### HandlerGetVisitorsByPublicID
-- [ ] There is a visitor authentication scheme which I believe is deprecated in here. The underlying idea is that only users and the visitor matching the queried PublicID would be authorized to perform this GET request. But I believe the auth.VisitorFromContext() function that is called here no longer works and that the entire visitor authentication scheme has just been abandoned and that I decided it's fine for visitors to just be queried at any point if the PublicID is known.
+- [x] There is a visitor authentication scheme which I believe is deprecated in here. The underlying idea is that only users and the visitor matching the queried PublicID would be authorized to perform this GET request. But I believe the auth.VisitorFromContext() function that is called here no longer works and that the entire visitor authentication scheme has just been abandoned and that I decided it's fine for visitors to just be queried at any point if the PublicID is known. >> in that case the user auth should also be dropped
 
 ## Cookie authentication implementation
 - [x] Unify the access token expiration timer through an environment variable stored in cfg (tough)
@@ -69,7 +69,7 @@
 - [x] POST /api/desks
 - [x] PUT /api/desks/{public_desk_id}
 - [x] GET /api/desks
-- [ ] Should GET /api/desks require authentication? Probably.
+- [x] Should GET /api/desks require authentication? Probably.
 - [x] GET /api/desks/{public_desk_id}
 - [x] Currently the first 3 functions require userauth, the last doesn't. Is that a problem? > No. Reasoning being that when a servicelog is created for a visitor being called to a desk the desk pid is provided and the visitor needs to know what actual desk (e.g. desk.Name) they are going to. And they can get that information by querying GET /api/desks/{pid_from_service_log}
 - [ ] some sort of GET request for active desks, perhaps through a query parameter. Note that I need to resolve the QP issue in /api/visitors first
