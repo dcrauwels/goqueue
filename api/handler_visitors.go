@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/dcrauwels/goqueue/auth"
@@ -171,63 +170,48 @@ func (cfg *ApiConfig) HandlerGetVisitors(w http.ResponseWriter, r *http.Request)
 	var visitors []database.Visitor
 
 	// 2. check for query parameters (purpose, status)
-	queryParameters := r.URL.Query()
-	queryPurpose := queryParameters.Get("purpose")
-	queryStatus := queryParameters.Get("status")
+	q := r.URL.Query()
+	params := database.ListVisitorsParams{
+		PurposePublicID: strutils.QueryParameterToNullString(q.Get("purpose")),
+	}
 
 	// 2.1 status as string to status as int32
-	status64, err := strconv.ParseInt(queryStatus, 10, 32)
+	status, err := strutils.QueryParameterToNullInt(q.Get("status"))
 	if err != nil {
-		jsonutils.WriteError(w, http.StatusBadRequest, err, "query parameter 'status' only takes integer values")
+		jsonutils.WriteError(w, http.StatusBadRequest, err, "query parameter 'stauts' takes integers")
 		return
 	}
-	status := int32(status64) // cast as int32 as the SQL query parameter structs take this
-	// 2.2 check status for validity
-	// NYI
+	params.Status = status
+
+	// 2.3 start and end dates
+	var t time.Time
+	if startStr := q.Get("start_date"); startStr != "" {
+		t, err = time.Parse("2006-01-02", startStr)
+		if err != nil {
+			jsonutils.WriteError(w, http.StatusBadRequest, err, "query parameter 'start_date' takes ISO 8601 format (YYYY-MM-DD)")
+			return
+		} else {
+			params.StartDate = sql.NullTime{Time: t, Valid: true}
+		}
+	}
+	if endStr := q.Get("end_date"); endStr != "" {
+		t, err = time.Parse("2006-01-02", endStr)
+		if err != nil {
+			jsonutils.WriteError(w, http.StatusBadRequest, err, "query parameter 'end_date' takes ISO 8601 format (YYYY-MM-DD)")
+			return
+		} else {
+			params.EndDate = sql.NullTime{Time: t, Valid: true}
+		}
+	}
 
 	// 3. query database
-	switch {
-	case queryPurpose != "" && queryStatus != "": // both query parameters entered
-		queryParams := database.GetVisitorsByPurposePublicIDAndStatusParams{
-			PurposePublicID: queryPurpose,
-			Status:          status,
-		}
-		visitors, err = cfg.DB.GetVisitorsByPurposePublicIDAndStatus(r.Context(), queryParams)
+	visitors, err = cfg.DB.ListVisitors(r.Context(), params)
+	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			jsonutils.WriteError(w, http.StatusNotFound, err, "no visitors found in database for purpose "+queryPurpose+" and status "+queryStatus)
+			jsonutils.WriteError(w, http.StatusNotFound, err, "no visitors found under specified query parameters")
 			return
-		} else if err != nil {
-			jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (GetVisitorsByPurposeStatus)")
-			return
-		}
-
-	case queryPurpose != "" && queryStatus == "": // only purpose query parameter entered
-		visitors, err = cfg.DB.GetVisitorsByPurposePublicID(r.Context(), queryPurpose)
-		if errors.Is(err, sql.ErrNoRows) {
-			jsonutils.WriteError(w, http.StatusNotFound, err, "no visitors found in database for purpose "+queryPurpose)
-			return
-		} else if err != nil {
-			jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (GetVisitorsByPurpose)")
-			return
-		}
-
-	case queryPurpose == "" && queryStatus != "": // only status query parameter entered
-		visitors, err = cfg.DB.GetVisitorsByStatus(r.Context(), status)
-		if errors.Is(err, sql.ErrNoRows) {
-			jsonutils.WriteError(w, http.StatusNotFound, err, "no viistors found in database for status "+queryStatus)
-			return
-		} else if err != nil {
-			jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (GetVisitorsByStatus)")
-			return
-		}
-
-	case queryPurpose == "" && queryStatus == "": // neither query parameter entered
-		visitors, err = cfg.DB.GetVisitors(r.Context())
-		if errors.Is(err, sql.ErrNoRows) {
-			jsonutils.WriteError(w, http.StatusNotFound, err, "no visitors found in database")
-			return
-		} else if err != nil {
-			jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database")
+		} else {
+			jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (ListVisitors in HandlerGetVisitors)")
 			return
 		}
 	}

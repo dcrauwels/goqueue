@@ -81,3 +81,25 @@ func QueryParameterToNullString(s string) sql.NullString {
 		Valid:  s != "",
 	}
 }
+
+func QueryParameterToNullInt(s string) (sql.NullInt32, error) {
+	// used to convert strings retrieved from query parameters (e.g. through r.URL.Query().Get()) to sql.NullInt32s.
+	// Note that this function returns an error, unlike QueryParameterToNullString, because there is a possibility
+	// that a request is sent with an impossible query parameter, e.g. "?status=abc" where it only takes ints. In that
+	// case this function will return an error.
+
+	r := sql.NullInt32{
+		Int32: 0,
+		Valid: false,
+	}
+
+	i64, err := strconv.Atoi(s)
+	if err != nil {
+		return r, err
+	}
+
+	return sql.NullInt32{
+		Int32: int32(i64),
+		Valid: true,
+	}, nil
+}

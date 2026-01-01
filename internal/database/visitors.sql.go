@@ -340,7 +340,7 @@ func (q *Queries) GetWaitingVisitorsByPurposePublicID(ctx context.Context, purpo
 
 const listVisitors = `-- name: ListVisitors :many
 SELECT id, created_at, updated_at, waiting_since, name, status, daily_ticket_number, public_id, purpose_public_id FROM visitors
-WHERE ($1::text IS NULL OR status = $1)
+WHERE ($1::int IS NULL OR status = $1)
     AND ($2::text IS NULL OR purpose_public_id = $2)
     AND ($3::timestamp IS NULL OR created_at >= $3)
     AND ($4::timestamp IS NULL OR created_at < $4)
@@ -348,7 +348,7 @@ ORDER BY waiting_since ASC
 `
 
 type ListVisitorsParams struct {
-	Status          sql.NullString
+	Status          sql.NullInt32
 	PurposePublicID sql.NullString
 	StartDate       sql.NullTime
 	EndDate         sql.NullTime
