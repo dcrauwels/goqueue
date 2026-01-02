@@ -25,3 +25,8 @@ UPDATE desks
 SET name = $2, description = $3, is_active = $4, updated_at = NOW()
 WHERE public_id = $1
 RETURNING *;
+
+-- name: ListDesks :many
+SELECT * FROM desks
+WHERE (sqlc.narg('is_active')::boolean IS NULL OR is_active = sqlc.narg('is_active'))
+ORDER BY name ASC;

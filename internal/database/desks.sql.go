@@ -126,6 +126,41 @@ func (q *Queries) GetDesksByPublicID(ctx context.Context, publicID string) (Desk
 	return i, err
 }
 
+const listDesks = `-- name: ListDesks :many
+SELECT id, description, is_active, public_id, name FROM desks
+WHERE ($1::boolean IS NULL OR is_active = $1)
+ORDER BY name ASC
+`
+
+func (q *Queries) ListDesks(ctx context.Context, isActive sql.NullBool) ([]Desk, error) {
+	rows, err := q.db.QueryContext(ctx, listDesks, isActive)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Desk
+	for rows.Next() {
+		var i Desk
+		if err := rows.Scan(
+			&i.ID,
+			&i.Description,
+			&i.IsActive,
+			&i.PublicID,
+			&i.Name,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const setDesksByPublicID = `-- name: SetDesksByPublicID :one
 UPDATE desks
 SET name = $2, description = $3, is_active = $4, updated_at = NOW()

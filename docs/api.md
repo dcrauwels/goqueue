@@ -173,9 +173,9 @@ See above. Subject to change: there's an argument to be made the visitor access 
 
 ## GET /api/visitors
 
-Can be sent both to the generic /api/visitors endpoint and to a specific visitor UUID endpoint. Requests to the generic endpoint will return all visitors and can therefore only be made to users. This is integral to populating a list of visitors to be called. Requests to the specific endpoint can also be made with visitor authentication if the visitor access token matches the UUID where the request is being sent to.
+Can be sent both to the generic /api/visitors endpoint and to a specific visitor ID endpoint. Requests to the generic endpoint will return all visitors and can therefore only be made by users. The specific visitor ID endpoint does not require authentication for a GET request. Note that PUT requests do require user authentication.
 
-The generic /api/visitors endpoint takes query parameters for GET requests. This can be used to filter for visitors with specific statuses or purposes. The point of this feature is to allow users to generate usable lists of visitors for calling purposes. Example: GET /api/visitors?purpose=finances&status=1
+The generic /api/visitors endpoint takes query parameters for GET requests. The point of this feature is to allow users to generate usable lists of visitors for calling purposes. Example: GET /api/visitors?purpose=finances&status=1
 
 **Query parameters for generic endpoint:**
 
@@ -188,3 +188,41 @@ The generic /api/visitors endpoint takes query parameters for GET requests. This
 
 Returns either a set of visitors or a single visitor, depending on whether the request is sent to the generic or the specific endpoint. Parameters are as in the endpoint wide response parameters described abovess.
 
+# /api/desks
+Endpoint for handling desks, which are at this point functionally just labels to call visitors from.
+
+**Response parameters:**
+- `id`: UUID. Unique identifier for purely internal use. Not intended to be human readable length.
+- `public_id`: string. Shorter ID presented publicly for use in endpoints. Intended to be human readable length.
+- `name`: string. Label presented to visitor (and user). E.g. "F1", "F2", "F3", etc. Can also just be integer-like, "1", "2".
+- `description`: string. Describes the physical desk.
+- `is_active`: boolean. Describes whether a desk is in use or not.
+
+## POST /api/desks
+
+**Request parameters:**
+- `name`: string. Label presented to visitor (and user). E.g. "F1", "F2", "F3", etc. Can also just be integer-like, "1", "2".
+- `description`: string. Describes the physical desk.
+
+Uses the general response parameters as listed under the `/api/desks` heading.
+
+## PUT /api/desks
+
+**Request parameters:**
+- `name`: string. Label presented to visitor (and user). E.g. "F1", "F2", "F3", etc. Can also just be integer-like, "1", "2".
+- `description`: string. Describes the physical desk.
+- `is_active`: boolean. Describes whether a desk is in use or not.
+
+Uses the general response parameters as listed under the `/api/desks` heading.
+
+## GET /api/desks
+
+Can be sent both to the generic /api/desks endpoint and to a specific desk ID endpoint. Requests to the generic endpoint will return all desks and can therefore only be made by users. The specific desk ID endpoint does not authentication for a GET request. Note that PUT requests do require user authentication.
+
+The generic /api/desks endpoint takes query parameters for GET requests. Example: GET /api/visitors?active=true
+
+Uses the general response parameters as listed under the `/api/desks` heading, although the generic endpoint returns an array of these desks.
+
+**Query parameters for generic endpoint:**
+
+- `is_active`: boolean. Describes whether a desk is in use or not.

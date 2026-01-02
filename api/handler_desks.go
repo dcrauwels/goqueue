@@ -150,18 +150,26 @@ func (cfg *ApiConfig) HandlerGetDesks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 2. run query GetDesks
-	desks, err := cfg.DB.GetDesks(r.Context())
+	// 2. get query parameters
+
+	params, err := strutils.QueryParameterToNullBool(r.URL.Query().Get("is_active"))
+	if err != nil {
+		jsonutils.WriteError(w, http.StatusBadRequest, err, "invalid query parameter for is_active: only booleans are accepted")
+		return
+	}
+
+	// 3. run query ListDesks
+	desks, err := cfg.DB.ListDesks(r.Context(), params)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			jsonutils.WriteError(w, http.StatusNotFound, err, "no rows found (GetDesks in HandlerGetDesks)")
+			jsonutils.WriteError(w, http.StatusNotFound, err, "no rows found (ListDesks in HandlerGetDesks)")
 		} else {
-			jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (GetDesks in HandlerGetDesks)")
+			jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (ListDesks in HandlerGetDesks)")
 		}
 		return
 	}
 
-	// 3. return result
+	// 4. return result
 	response := make([]DesksResponseParameters, len(desks))
 	for i, d := range desks {
 		response[i].Populate(d)

@@ -72,7 +72,7 @@
 - [x] Should GET /api/desks require authentication? Probably.
 - [x] GET /api/desks/{public_desk_id}
 - [x] Currently the first 3 functions require userauth, the last doesn't. Is that a problem? > No. Reasoning being that when a servicelog is created for a visitor being called to a desk the desk pid is provided and the visitor needs to know what actual desk (e.g. desk.Name) they are going to. And they can get that information by querying GET /api/desks/{pid_from_service_log}
-- [ ] some sort of GET request for active desks, perhaps through a query parameter. Note that I need to resolve the QP issue in /api/visitors first
+- [x] some sort of GET request for active desks, perhaps through a query parameter. Note that I need to resolve the QP issue in /api/visitors first
 
 ## Visitor daily_ticket_number implementation
 - [x] Write a migration for a ticket_counter table (two columns: date as primary key, last_ticket_number as int)

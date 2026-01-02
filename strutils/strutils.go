@@ -89,7 +89,6 @@ func QueryParameterToNullInt(s string) (sql.NullInt32, error) {
 	// case this function will return an error.
 
 	r := sql.NullInt32{
-		Int32: 0,
 		Valid: false,
 	}
 
@@ -98,8 +97,30 @@ func QueryParameterToNullInt(s string) (sql.NullInt32, error) {
 		return r, err
 	}
 
-	return sql.NullInt32{
-		Int32: int32(i64),
-		Valid: true,
-	}, nil
+	r.Int32 = int32(i64)
+	r.Valid = true
+
+	return r, nil
+}
+
+func QueryParameterToNullBool(s string) (sql.NullBool, error) {
+	/*
+		used to convert strings retrieved from query parameters (e.g. through http.Reader.URL.Query()) to sql.NullBools.
+		Note that this function returns an error, unlike QueryParameterToNullString, because there is a possibility that a request
+		is sent with a value that does not parse as a boolean. In reality, the error returned is the same one thrown by strconv.Parsebool().
+	*/
+	r := sql.NullBool{
+		Valid: false,
+	}
+
+	b, err := strconv.ParseBool(s)
+	if err != nil {
+		return r, err
+	}
+
+	r.Bool = b
+	r.Valid = true
+
+	return r, nil
+
 }
