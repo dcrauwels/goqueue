@@ -12,7 +12,7 @@
 - [x] api.HandlerGetPurposesByID is NYI (in api/handler_purposes.go)
 - [x] Think about whether api.HandlerGetUsersByID needs authentication or not. Leaning towards yes. Also depends on how I will implement a visitor seeing they've been called. > currently implemented a check for user auth
 - [x] Stop rotating refresh tokens so much, instead only rotate it when you use it for its purpose of generating an access token? Or is the current approach fine?
-- [?] What is auth.VisitorsByID supposed to do? (in auth/auth.go)
+- [ ] What is auth.VisitorsByID supposed to do? (in auth/auth.go)
 - [x] All of my http.Redirects are wrong. They more or less all point to "/api/login" which is wrong. It should be an HTML login page like /login. (I think.)
 - [x] Currently there are no checks for user.IsActive. This needs to either go in AuthUserMiddleware or in all of the individual user authentication checks in handlers. The bottom line is: do we want to allow a user to present an access / refresh token for an inactive account and get that ID added to their context? > No, we don't, so it should be blocked at the AuthUserMiddleware level, where we clear the cookie, throw a 401 Unauthorized error, clear cookies and send them to login. (Also see previous todo.)
 - [ ] What range of statuses will be allowed? There are multiple NYI's for this, mostly in auth_visitors.go.
@@ -50,8 +50,8 @@
 - [x] Update the environment variable handling in main.go by writing a function that uses os.LookupEnv to more robustly handle errors in environment variable setting. 
 - [x] Incorporate PUBLICIDLENGTH as an environment variable.
 - [x] Add the nanoid package to dependencies in readme.md.
-- [?] Update the handlers to invoke the nanoid generator and the pass generated public_id into the updated SQL queries.
-- [?] Update the handlers to have the queryparameters and responseparameter structs include public_ids.
+- [x] Update the handlers to invoke the nanoid generator and the pass generated public_id into the updated SQL queries.
+- [x] Update the handlers to have the queryparameters and responseparameter structs include public_ids.
 - [x] POST & PUT & GET users
 - [x] POST & PUT & GET visitors
 - [x] POST & PUT desks > need to do the handler_desks.go stuff first
@@ -60,7 +60,7 @@
 - [x] POST & PUT refresh_tokens
 - [x] POST & PUT purposes
 - [x] A number of api paths have '{public_visitor_id}' in them and a number have '{user_public_id}'. Unify to latter style across main.go and handlers.
-- [ ] POST & PUT service_logs
+- [x] POST & PUT service_logs
 - [x] Follow down the road to fix the handler functions.
 
 ## handler_desks.go
