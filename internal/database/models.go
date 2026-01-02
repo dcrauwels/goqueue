@@ -13,9 +13,10 @@ import (
 
 type Desk struct {
 	ID          uuid.UUID
-	Number      int32
 	Description sql.NullString
 	IsActive    bool
+	PublicID    string
+	Name        string
 }
 
 type Purpose struct {
@@ -24,26 +25,29 @@ type Purpose struct {
 	UpdatedAt       time.Time
 	PurposeName     string
 	ParentPurposeID uuid.NullUUID
+	PublicID        string
 }
 
 type RefreshToken struct {
-	Token     string
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	UserID    uuid.UUID
-	ExpiresAt time.Time
-	RevokedAt sql.NullTime
+	Token        string
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+	ExpiresAt    time.Time
+	RevokedAt    sql.NullTime
+	PublicID     string
+	UserPublicID string
 }
 
 type ServiceLog struct {
-	ID        uuid.UUID
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	VisitorID uuid.UUID
-	UserID    uuid.UUID
-	DeskID    uuid.UUID
-	CalledAt  time.Time
-	IsActive  bool
+	ID              uuid.UUID
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+	CalledAt        time.Time
+	IsActive        bool
+	PublicID        string
+	UserPublicID    string
+	VisitorPublicID string
+	DeskPublicID    string
 }
 
 type TicketCounter struct {
@@ -61,6 +65,7 @@ type User struct {
 	IsActive       bool
 	DeskID         uuid.NullUUID
 	FullName       string
+	PublicID       string
 }
 
 type Visitor struct {
@@ -69,7 +74,8 @@ type Visitor struct {
 	UpdatedAt         time.Time
 	WaitingSince      time.Time
 	Name              sql.NullString
-	PurposeID         uuid.UUID
 	Status            int32
 	DailyTicketNumber int32
+	PublicID          string
+	PurposePublicID   string
 }

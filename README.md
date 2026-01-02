@@ -14,8 +14,13 @@ Run up migration from the sql/schema directory.
 ## .env
 A .env file must manually be created. Please register the following variables:
 - DB_URL: postgres connection string with ?sslmode=disable query marameter. E.g.: `DB_URL = "postgres://postgres:postgres@localhost:5432/goqueue"`
-- ENV: "dev" for certain /admin endpoints
-- ACCESS_TOKEN_DURATION: access token expiration time in minutes
+- ENV: "dev" for certain /admin endpoints.
+- ACCESSTOKENDURATION: access token expiration time (in minutes).
+- REFRESHTOKENDURATION: refresh token expiration time (in weeks).
+- PUBLICIDLENGTH: length (in characters) of public-facing IDs for all database entries. Note that this applies to both API calls and urls.
+
+## dependencies
+- go get github.com/jaevor/go-nanoid
 
 # usage
 ## endpoints

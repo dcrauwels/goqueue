@@ -11,6 +11,7 @@ import (
 	"github.com/dcrauwels/goqueue/auth"
 	"github.com/dcrauwels/goqueue/internal/database"
 	"github.com/dcrauwels/goqueue/jsonutils"
+	"github.com/dcrauwels/goqueue/strutils"
 	"github.com/google/uuid"
 )
 
@@ -19,8 +20,9 @@ type loginRequestParameters struct {
 	Password string `json:"password"`
 }
 
-type responseParameters struct {
+type userResponseParameters struct {
 	ID               uuid.UUID `json:"id"`
+	PublicID         string    `json:"public_id"`
 	CreatedAt        time.Time `json:"created_at"`
 	UpdatedAt        time.Time `json:"updated_at"`
 	Email            string    `json:"email"`
@@ -31,20 +33,35 @@ type responseParameters struct {
 	UserRefreshToken string    `json:"user_refresh_token"`
 }
 
-type refreshTokenResponseParams struct {
-	Token     string       `json:"token"`
-	CreatedAt time.Time    `json:"created_at"`
-	UpdatedAt time.Time    `json:"updated_at"`
-	UserID    uuid.UUID    `json:"user_id"`
-	ExpiresAt time.Time    `json:"expires_at"`
-	RevokedAt sql.NullTime `json:"revoked_at"`
+func (rp *userResponseParameters) populate(u database.User, userAccessToken, userRefreshToken string) {
+	rp.ID = u.ID
+	rp.PublicID = u.PublicID
+	rp.CreatedAt = u.CreatedAt
+	rp.UpdatedAt = u.UpdatedAt
+	rp.Email = u.Email
+	rp.FullName = u.FullName
+	rp.IsAdmin = u.IsAdmin
+	rp.IsActive = u.IsActive
+	rp.UserAccessToken = userAccessToken
+	rp.UserRefreshToken = userRefreshToken
 }
 
-func (rp *refreshTokenResponseParams) Populate(token database.RefreshToken) {
+type refreshTokenResponseParameters struct {
+	Token        string       `json:"token"`
+	CreatedAt    time.Time    `json:"created_at"`
+	UpdatedAt    time.Time    `json:"updated_at"`
+	PublicID     string       `json:"public_id"`
+	UserPublicID string       `json:"user_public_id"`
+	ExpiresAt    time.Time    `json:"expires_at"`
+	RevokedAt    sql.NullTime `json:"revoked_at"`
+}
+
+func (rp *refreshTokenResponseParameters) Populate(token database.RefreshToken) {
 	rp.Token = token.Token
 	rp.CreatedAt = token.CreatedAt
 	rp.UpdatedAt = token.UpdatedAt
-	rp.UserID = token.UserID
+	rp.PublicID = token.PublicID
+	rp.UserPublicID = token.UserPublicID
 	rp.ExpiresAt = token.ExpiresAt
 	rp.RevokedAt = token.RevokedAt
 }
@@ -64,12 +81,7 @@ func (cfg *ApiConfig) HandlerGetRefreshTokens(w http.ResponseWriter, r *http.Req
 	var refreshTokens []database.RefreshToken
 	var err error
 	if queryUser != "" {
-		userID, err := uuid.Parse(queryUser)
-		if err != nil {
-			jsonutils.WriteError(w, http.StatusBadRequest, err, "query parameter (?user=) is not a valid user ID")
-			return
-		}
-		refreshTokens, err = cfg.DB.GetRefreshTokensByUserID(r.Context(), userID) // note that this returns an empty slice, not a sql.ErrNoRows error in case no rows are found!
+		refreshTokens, err = cfg.DB.GetRefreshTokensByUserPublicID(r.Context(), queryUser) // note that this returns an empty slice, not a sql.ErrNoRows error in case no rows are found!
 	} else {
 		refreshTokens, err = cfg.DB.GetRefreshTokens(r.Context())
 	}
@@ -83,14 +95,14 @@ func (cfg *ApiConfig) HandlerGetRefreshTokens(w http.ResponseWriter, r *http.Req
 	}
 
 	// 3. write response
-	response := make([]refreshTokenResponseParams, len(refreshTokens))
+	response := make([]refreshTokenResponseParameters, len(refreshTokens))
 	for i, u := range refreshTokens {
 		response[i].Populate(u)
 	}
 	jsonutils.WriteJSON(w, http.StatusOK, response)
 }
 
-func (cfg *ApiConfig) HandlerLoginUser(w http.ResponseWriter, r *http.Request) {
+func (cfg *ApiConfig) HandlerLoginUser(w http.ResponseWriter, r *http.Request) { // POST /api/login
 	// for authenticating USERS, not VISITORS
 	// 1. get request content (email: string, password: string)
 	decoder := json.NewDecoder(r.Body)
@@ -104,7 +116,7 @@ func (cfg *ApiConfig) HandlerLoginUser(w http.ResponseWriter, r *http.Request) {
 	// 2. validate login credentials
 	user, err := cfg.DB.GetUserByEmail(r.Context(), reqParams.Email)
 	if errors.Is(err, sql.ErrNoRows) {
-		jsonutils.WriteError(w, http.StatusNotFound, err, "email or password incorrect")
+		jsonutils.WriteError(w, http.StatusUnauthorized, err, "email or password incorrect")
 		return
 	} else if err != nil {
 		jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (GetUserByEmail in HandlerLoginUser)")
@@ -112,11 +124,11 @@ func (cfg *ApiConfig) HandlerLoginUser(w http.ResponseWriter, r *http.Request) {
 	}
 	err = auth.CheckPasswordHash(user.HashedPassword, reqParams.Password)
 	if err != nil {
-		jsonutils.WriteError(w, http.StatusNotFound, err, "email or password incorrect")
+		jsonutils.WriteError(w, http.StatusUnauthorized, err, "email or password incorrect")
 		return
 	}
 	// 2.1 check if refresh token already exists
-	_, err = cfg.DB.GetRefreshTokensByUserID(r.Context(), user.ID)
+	_, err = cfg.DB.GetRefreshTokensByUserPublicID(r.Context(), user.PublicID)
 	if err == nil {
 		jsonutils.WriteError(w, http.StatusSeeOther, err, "user already logged in, use /api/refresh endpoint instead")
 		return
@@ -126,7 +138,7 @@ func (cfg *ApiConfig) HandlerLoginUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 3. generate access token
-	userAccessToken, err := auth.MakeJWT(user.ID, "user", cfg.Secret, 60)
+	userAccessToken, err := auth.MakeJWT(user.PublicID, "user", cfg.Secret, cfg.AccessTokenDuration)
 	if err != nil {
 		jsonutils.WriteError(w, http.StatusInternalServerError, err, "error creating access token (in HandlerLoginUser)")
 		return
@@ -139,9 +151,10 @@ func (cfg *ApiConfig) HandlerLoginUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	queryParams := database.CreateRefreshTokenParams{
-		Token:     newRefreshToken,
-		UserID:    user.ID,
-		ExpiresAt: time.Now().Add(time.Hour * 24 * 14), // 14 days
+		Token:        newRefreshToken,
+		PublicID:     cfg.PublicIDGenerator(),
+		UserPublicID: user.PublicID,
+		ExpiresAt:    time.Now().Add(time.Hour * 24 * time.Duration(cfg.RefreshTokenDuration)), // 14 days
 	}
 	_, err = cfg.DB.CreateRefreshToken(r.Context(), queryParams)
 	if err != nil {
@@ -149,23 +162,14 @@ func (cfg *ApiConfig) HandlerLoginUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 5. write cookies
-	auth.SetAuthCookies(w, userAccessToken, newRefreshToken, "user", cfg.AccessTokenDuration, cfg.RefreshTokenDuration)
-
-	// 6. return access token to user
-	respParams := responseParameters{
-		ID:               user.ID,
-		CreatedAt:        user.CreatedAt,
-		UpdatedAt:        user.UpdatedAt,
-		Email:            user.Email,
-		FullName:         user.FullName,
-		IsAdmin:          user.IsAdmin,
-		IsActive:         user.IsActive,
-		UserAccessToken:  userAccessToken,
-		UserRefreshToken: newRefreshToken,
-	}
+	// 5. return access token to user
+	respParams := userResponseParameters{}
+	respParams.populate(user, userAccessToken, newRefreshToken)
 
 	jsonutils.WriteJSON(w, http.StatusOK, respParams)
+
+	// 6. write cookies
+	auth.SetAuthCookies(w, userAccessToken, newRefreshToken, "user", cfg.AccessTokenDuration, cfg.RefreshTokenDuration)
 
 }
 
@@ -179,7 +183,7 @@ func (cfg *ApiConfig) HandlerRefreshUser(w http.ResponseWriter, r *http.Request)
 	}
 
 	// 2. validate refresh token through DB query
-	validRefreshTokens, err := cfg.DB.GetRefreshTokensByUserID(r.Context(), user.ID)
+	validRefreshTokens, err := cfg.DB.GetRefreshTokensByUserPublicID(r.Context(), user.PublicID)
 	if errors.Is(err, sql.ErrNoRows) {
 		jsonutils.WriteError(w, http.StatusNotFound, err, "refresh token not found")
 		return
@@ -189,7 +193,7 @@ func (cfg *ApiConfig) HandlerRefreshUser(w http.ResponseWriter, r *http.Request)
 	}
 	// 2.1 if more than one valid refresh token is available: rotate fully (revoke all, return new token)
 	if len(validRefreshTokens) != 1 {
-		_, err = cfg.DB.RevokeRefreshTokenByUserID(r.Context(), user.ID)
+		_, err = cfg.DB.RevokeRefreshTokenByUserPublicID(r.Context(), user.PublicID)
 		if err != nil {
 			jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (RevokeRefreshTokensByUserID in HandlerRefreshUsers)")
 			return
@@ -202,7 +206,7 @@ func (cfg *ApiConfig) HandlerRefreshUser(w http.ResponseWriter, r *http.Request)
 	refreshToken := validRefreshTokens[0]
 
 	// 2.3 check token expiration. UserID check should be superfluous (as the query should also test for this) but why not
-	if user.ID != refreshToken.UserID || refreshToken.ExpiresAt.After(time.Now()) {
+	if user.PublicID != refreshToken.UserPublicID || refreshToken.ExpiresAt.After(time.Now()) {
 		_, err = cfg.DB.RevokeRefreshTokenByToken(r.Context(), refreshToken.Token)
 		if err != nil {
 			jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (RevokeRefreshTokenByToken in HandlerRefreshUsers)")
@@ -225,15 +229,16 @@ func (cfg *ApiConfig) HandlerRefreshUser(w http.ResponseWriter, r *http.Request)
 	}
 
 	// 3. generate access token
-	userAccessToken, err := auth.MakeJWT(user.ID, "user", cfg.Secret, cfg.AccessTokenDuration)
+	userAccessToken, err := auth.MakeJWT(user.PublicID, "user", cfg.Secret, cfg.AccessTokenDuration)
 	if err != nil {
 		jsonutils.WriteError(w, http.StatusInternalServerError, err, "error creating access token")
 		return
 	}
 
 	// 4. return access token to user > Not sure this is correct
-	respParams := responseParameters{
+	respParams := userResponseParameters{
 		ID:               user.ID,
+		PublicID:         user.PublicID,
 		CreatedAt:        user.CreatedAt,
 		UpdatedAt:        user.UpdatedAt,
 		Email:            user.Email,
@@ -244,6 +249,9 @@ func (cfg *ApiConfig) HandlerRefreshUser(w http.ResponseWriter, r *http.Request)
 		UserRefreshToken: newRefreshToken.Token,
 	}
 	jsonutils.WriteJSON(w, http.StatusOK, respParams)
+
+	// 5. set cookies for user
+	auth.SetAuthCookies(w, userAccessToken, newRefreshToken.Token, "user", cfg.AccessTokenDuration, cfg.RefreshTokenDuration)
 }
 
 func (cfg *ApiConfig) HandlerLogoutUser(w http.ResponseWriter, r *http.Request) {
@@ -256,7 +264,7 @@ func (cfg *ApiConfig) HandlerLogoutUser(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// 2. query to revoke refresh token
-	_, err = cfg.DB.RevokeRefreshTokenByUserID(r.Context(), user.ID)
+	_, err = cfg.DB.RevokeRefreshTokenByUserPublicID(r.Context(), user.PublicID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) { // highly unexpected state
 			jsonutils.WriteError(w, http.StatusNotFound, err, "no refresh token found for this user")
@@ -271,8 +279,9 @@ func (cfg *ApiConfig) HandlerLogoutUser(w http.ResponseWriter, r *http.Request) 
 	// 3. empty cookies
 	auth.SetAuthCookies(w, "", "", "user", cfg.AccessTokenDuration, cfg.RefreshTokenDuration)
 	// 3.1 and send response with empty access token
-	respParams := responseParameters{
+	respParams := userResponseParameters{
 		ID:               user.ID,
+		PublicID:         user.PublicID,
 		CreatedAt:        user.CreatedAt,
 		UpdatedAt:        user.UpdatedAt,
 		Email:            user.Email,
@@ -286,16 +295,15 @@ func (cfg *ApiConfig) HandlerLogoutUser(w http.ResponseWriter, r *http.Request) 
 
 }
 
-func (cfg *ApiConfig) HandlerRevokeRefreshToken(w http.ResponseWriter, r *http.Request) { // POST /api/revoke/{user_id} NYI
+func (cfg *ApiConfig) HandlerRevokeRefreshToken(w http.ResponseWriter, r *http.Request) { // POST /api/revoke/{user_public_id}
 	/*
 		Function for revoking a single user's refresh token(s).
 	*/
 
 	// 1. Get userID from URI
-	req := r.PathValue("user_id")
-	userID, err := uuid.Parse(req)
+	pathUserPublicID, err := strutils.GetPublicIDFromPathValue("user_public_id", cfg.PublicIDLength, r)
 	if err != nil {
-		jsonutils.WriteError(w, http.StatusBadRequest, err, "endpoint is not a valid user ID")
+		jsonutils.WriteError(w, http.StatusBadRequest, err, "incorrect path value length")
 		return
 	}
 
@@ -304,7 +312,7 @@ func (cfg *ApiConfig) HandlerRevokeRefreshToken(w http.ResponseWriter, r *http.R
 	if err != nil {
 		jsonutils.WriteError(w, http.StatusUnauthorized, err, "user authentication required to access POST /api/revoke")
 		return
-	} else if accessingUser.ID == userID { // in this case the user is sending a revoke request for themselves, which should be a logout instead
+	} else if accessingUser.PublicID == pathUserPublicID { // in this case the user is sending a revoke request for themselves, which should be a logout instead
 		jsonutils.WriteJSON(w, http.StatusBadRequest, "user is trying to revoke self - this is done through POST /api/logout")
 		return
 	} else if !accessingUser.IsAdmin {
@@ -313,7 +321,7 @@ func (cfg *ApiConfig) HandlerRevokeRefreshToken(w http.ResponseWriter, r *http.R
 	}
 
 	// 3. query database cfg.DB.RevokeRefreshTokenByUserID
-	revokedTokens, err := cfg.DB.RevokeRefreshTokenByUserID(r.Context(), userID)
+	revokedTokens, err := cfg.DB.RevokeRefreshTokenByUserPublicID(r.Context(), pathUserPublicID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			jsonutils.WriteError(w, http.StatusNotFound, err, "no valid refresh tokens found for this user")
@@ -325,7 +333,7 @@ func (cfg *ApiConfig) HandlerRevokeRefreshToken(w http.ResponseWriter, r *http.R
 	}
 
 	// 4. write response
-	response := make([]refreshTokenResponseParams, len(revokedTokens))
+	response := make([]refreshTokenResponseParameters, len(revokedTokens))
 	for i, u := range revokedTokens {
 		response[i].Populate(u)
 	}
@@ -335,7 +343,7 @@ func (cfg *ApiConfig) HandlerRevokeRefreshToken(w http.ResponseWriter, r *http.R
 func (cfg *ApiConfig) HandlerRevokeAllRefreshTokens(w http.ResponseWriter, r *http.Request) { // POST /api/revoke
 	/*
 		Function for taking the rather nuclear option of revoking all refresh tokens. This means all users are instantly logged out.
-		Like POST /api/revoke/{user_id} this should be restricted to admin type users only. Part of me wonders whether to have this at all.
+		Like POST /api/revoke/{user_public_id} this should be restricted to admin type users only. Part of me wonders whether to have this at all.
 	*/
 
 	// 1. Authenticate from context: get user and check if admin
@@ -361,7 +369,7 @@ func (cfg *ApiConfig) HandlerRevokeAllRefreshTokens(w http.ResponseWriter, r *ht
 	}
 
 	// 3. write response
-	response := make([]refreshTokenResponseParams, len(revokedTokens))
+	response := make([]refreshTokenResponseParameters, len(revokedTokens))
 	for i, u := range revokedTokens {
 		response[i].Populate(u)
 	}

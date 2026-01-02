@@ -12,28 +12,35 @@ import (
 )
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO users (id, created_at, updated_at, email, hashed_password, full_name, is_admin, is_active)
+INSERT INTO users (id, public_id,created_at, updated_at, email, hashed_password, full_name, is_admin, is_active)
 VALUES (
     gen_random_uuid(),
-    NOW(),
-    NOW(),
     $1,
+    NOW(),
+    NOW(),
     $2,
     $3,
+    $4,
     FALSE,
     TRUE
 )
-RETURNING id, created_at, updated_at, email, hashed_password, is_admin, is_active, desk_id, full_name
+RETURNING id, created_at, updated_at, email, hashed_password, is_admin, is_active, desk_id, full_name, public_id
 `
 
 type CreateUserParams struct {
+	PublicID       string
 	Email          string
 	HashedPassword string
 	FullName       string
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
-	row := q.db.QueryRowContext(ctx, createUser, arg.Email, arg.HashedPassword, arg.FullName)
+	row := q.db.QueryRowContext(ctx, createUser,
+		arg.PublicID,
+		arg.Email,
+		arg.HashedPassword,
+		arg.FullName,
+	)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -45,6 +52,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.IsActive,
 		&i.DeskID,
 		&i.FullName,
+		&i.PublicID,
 	)
 	return i, err
 }
@@ -52,7 +60,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 const deleteUserByID = `-- name: DeleteUserByID :one
 DELETE FROM users
 WHERE id = $1
-RETURNING id, created_at, updated_at, email, hashed_password, is_admin, is_active, desk_id, full_name
+RETURNING id, created_at, updated_at, email, hashed_password, is_admin, is_active, desk_id, full_name, public_id
 `
 
 func (q *Queries) DeleteUserByID(ctx context.Context, id uuid.UUID) (User, error) {
@@ -68,12 +76,13 @@ func (q *Queries) DeleteUserByID(ctx context.Context, id uuid.UUID) (User, error
 		&i.IsActive,
 		&i.DeskID,
 		&i.FullName,
+		&i.PublicID,
 	)
 	return i, err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, created_at, updated_at, email, hashed_password, is_admin, is_active, desk_id, full_name FROM users
+SELECT id, created_at, updated_at, email, hashed_password, is_admin, is_active, desk_id, full_name, public_id FROM users
 WHERE email = $1
 `
 
@@ -90,12 +99,13 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.IsActive,
 		&i.DeskID,
 		&i.FullName,
+		&i.PublicID,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, created_at, updated_at, email, hashed_password, is_admin, is_active, desk_id, full_name FROM users
+SELECT id, created_at, updated_at, email, hashed_password, is_admin, is_active, desk_id, full_name, public_id FROM users
 where id = $1
 `
 
@@ -112,12 +122,36 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.IsActive,
 		&i.DeskID,
 		&i.FullName,
+		&i.PublicID,
+	)
+	return i, err
+}
+
+const getUserByPublicID = `-- name: GetUserByPublicID :one
+SELECT id, created_at, updated_at, email, hashed_password, is_admin, is_active, desk_id, full_name, public_id FROM users
+WHERE public_id = $1
+`
+
+func (q *Queries) GetUserByPublicID(ctx context.Context, publicID string) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserByPublicID, publicID)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Email,
+		&i.HashedPassword,
+		&i.IsAdmin,
+		&i.IsActive,
+		&i.DeskID,
+		&i.FullName,
+		&i.PublicID,
 	)
 	return i, err
 }
 
 const getUsers = `-- name: GetUsers :many
-SELECT id, created_at, updated_at, email, hashed_password, is_admin, is_active, desk_id, full_name FROM users
+SELECT id, created_at, updated_at, email, hashed_password, is_admin, is_active, desk_id, full_name, public_id FROM users
 `
 
 func (q *Queries) GetUsers(ctx context.Context) ([]User, error) {
@@ -139,6 +173,7 @@ func (q *Queries) GetUsers(ctx context.Context) ([]User, error) {
 			&i.IsActive,
 			&i.DeskID,
 			&i.FullName,
+			&i.PublicID,
 		); err != nil {
 			return nil, err
 		}
@@ -153,24 +188,24 @@ func (q *Queries) GetUsers(ctx context.Context) ([]User, error) {
 	return items, nil
 }
 
-const setUserByID = `-- name: SetUserByID :one
+const setUserByPublicID = `-- name: SetUserByPublicID :one
 UPDATE users
 SET email = $2, full_name = $3, is_admin = $4, is_active = $5, updated_at = NOW()
-WHERE id = $1
-returning id, created_at, updated_at, email, hashed_password, is_admin, is_active, desk_id, full_name
+WHERE public_id = $1
+returning id, created_at, updated_at, email, hashed_password, is_admin, is_active, desk_id, full_name, public_id
 `
 
-type SetUserByIDParams struct {
-	ID       uuid.UUID
+type SetUserByPublicIDParams struct {
+	PublicID string
 	Email    string
 	FullName string
 	IsAdmin  bool
 	IsActive bool
 }
 
-func (q *Queries) SetUserByID(ctx context.Context, arg SetUserByIDParams) (User, error) {
-	row := q.db.QueryRowContext(ctx, setUserByID,
-		arg.ID,
+func (q *Queries) SetUserByPublicID(ctx context.Context, arg SetUserByPublicIDParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, setUserByPublicID,
+		arg.PublicID,
 		arg.Email,
 		arg.FullName,
 		arg.IsAdmin,
@@ -187,6 +222,7 @@ func (q *Queries) SetUserByID(ctx context.Context, arg SetUserByIDParams) (User,
 		&i.IsActive,
 		&i.DeskID,
 		&i.FullName,
+		&i.PublicID,
 	)
 	return i, err
 }
@@ -195,7 +231,7 @@ const setUserEmailPasswordByID = `-- name: SetUserEmailPasswordByID :one
 UPDATE users
 SET email = $2, hashed_password = $3, updated_at = NOW()
 WHERE id = $1
-RETURNING id, created_at, updated_at, email, hashed_password, is_admin, is_active, desk_id, full_name
+RETURNING id, created_at, updated_at, email, hashed_password, is_admin, is_active, desk_id, full_name, public_id
 `
 
 type SetUserEmailPasswordByIDParams struct {
@@ -217,6 +253,7 @@ func (q *Queries) SetUserEmailPasswordByID(ctx context.Context, arg SetUserEmail
 		&i.IsActive,
 		&i.DeskID,
 		&i.FullName,
+		&i.PublicID,
 	)
 	return i, err
 }
@@ -225,7 +262,7 @@ const setUserFullNameByID = `-- name: SetUserFullNameByID :one
 UPDATE users
 SET full_name = $2, updated_at = NOW()
 where id = $1
-RETURNING id, created_at, updated_at, email, hashed_password, is_admin, is_active, desk_id, full_name
+RETURNING id, created_at, updated_at, email, hashed_password, is_admin, is_active, desk_id, full_name, public_id
 `
 
 type SetUserFullNameByIDParams struct {
@@ -246,6 +283,7 @@ func (q *Queries) SetUserFullNameByID(ctx context.Context, arg SetUserFullNameBy
 		&i.IsActive,
 		&i.DeskID,
 		&i.FullName,
+		&i.PublicID,
 	)
 	return i, err
 }
@@ -254,7 +292,7 @@ const setUserInactiveByID = `-- name: SetUserInactiveByID :one
 UPDATE users
 SET is_active = $2, updated_at = NOW()
 WHERE id = $1
-RETURNING id, created_at, updated_at, email, hashed_password, is_admin, is_active, desk_id, full_name
+RETURNING id, created_at, updated_at, email, hashed_password, is_admin, is_active, desk_id, full_name, public_id
 `
 
 type SetUserInactiveByIDParams struct {
@@ -275,6 +313,7 @@ func (q *Queries) SetUserInactiveByID(ctx context.Context, arg SetUserInactiveBy
 		&i.IsActive,
 		&i.DeskID,
 		&i.FullName,
+		&i.PublicID,
 	)
 	return i, err
 }
@@ -283,7 +322,7 @@ const setUserIsAdminByID = `-- name: SetUserIsAdminByID :one
 UPDATE users
 SET is_admin = $2, updated_at = NOW()
 WHERE id = $1
-RETURNING id, created_at, updated_at, email, hashed_password, is_admin, is_active, desk_id, full_name
+RETURNING id, created_at, updated_at, email, hashed_password, is_admin, is_active, desk_id, full_name, public_id
 `
 
 type SetUserIsAdminByIDParams struct {
@@ -304,6 +343,7 @@ func (q *Queries) SetUserIsAdminByID(ctx context.Context, arg SetUserIsAdminByID
 		&i.IsActive,
 		&i.DeskID,
 		&i.FullName,
+		&i.PublicID,
 	)
 	return i, err
 }

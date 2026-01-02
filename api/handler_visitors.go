@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/dcrauwels/goqueue/auth"
@@ -16,42 +15,46 @@ import (
 )
 
 type VisitorsPostRequestParameters struct {
-	Name      string    `json:"name"`
-	PurposeID uuid.UUID `json:"purpose_id"`
+	Name            string `json:"name"`
+	PurposePublicID string `json:"purpose_public_id"`
 }
 
 type VisitorsPutRequestParameters struct {
-	Name      string    `json:"name"`
-	PurposeID uuid.UUID `json:"purpose_id"`
-	Status    int32     `json:"status"`
+	PublicID        string `json:"public_id"`
+	Name            string `json:"name"`
+	PurposePublicID string `json:"purpose_public_id"`
+	Status          int32  `json:"status"`
 }
 
 type VisitorsResponseParameters struct {
 	ID                uuid.UUID      `json:"id"`
+	PublicID          string         `json:"public_id"`
 	CreatedAt         time.Time      `json:"created_at"`
 	UpdatedAt         time.Time      `json:"updated_at"`
 	WaitingSince      time.Time      `json:"waiting_since"`
 	Name              sql.NullString `json:"name"`
-	PurposeID         uuid.UUID      `json:"purpose_id"`
+	PurposePublicID   string         `json:"purpose_public_id"`
 	Status            int32          `json:"status"`
 	DailyTicketNumber int32          `json:"daily_ticket_number"`
 }
 
 func (vrp *VisitorsResponseParameters) Populate(v database.Visitor) {
 	vrp.ID = v.ID
+	vrp.PublicID = v.PublicID
 	vrp.CreatedAt = v.CreatedAt
 	vrp.UpdatedAt = v.UpdatedAt
 	vrp.WaitingSince = v.WaitingSince
 	vrp.Name = v.Name
-	vrp.PurposeID = v.PurposeID
+	vrp.PurposePublicID = v.PurposePublicID
 	vrp.Status = v.Status
 	vrp.DailyTicketNumber = v.DailyTicketNumber
 }
 
+// POST /api/visitors no auth required
 func (cfg *ApiConfig) HandlerPostVisitors(w http.ResponseWriter, r *http.Request) { // POST /api/visitors
-	// function for sending a POST request to CREATE a single visitor from scratch
-	// in context the visitor accesses a website, enters his name and purpose and gets a number
-	//
+	/* function for sending a POST request to CREATE a single visitor from scratch
+	in context the visitor accesses a website, enters his name and purpose and gets a number*/
+
 	// 1. get request data: name, purpose
 	decoder := json.NewDecoder(r.Body)
 	request := VisitorsPostRequestParameters{}
@@ -62,12 +65,12 @@ func (cfg *ApiConfig) HandlerPostVisitors(w http.ResponseWriter, r *http.Request
 	}
 
 	// 2. check purpose for validity
-	purpose, err := cfg.DB.GetPurposesByID(r.Context(), request.PurposeID)
+	purpose, err := cfg.DB.GetPurposesByPublicID(r.Context(), request.PurposePublicID)
 	if errors.Is(err, sql.ErrNoRows) {
 		jsonutils.WriteError(w, http.StatusNotFound, err, "purpose not found in database, please register first")
 		return
 	} else if err != nil {
-		jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (GetPurposesByName)")
+		jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (GetPurposesByPublicID in HandlerPostVisitors)")
 		return
 	}
 
@@ -78,10 +81,14 @@ func (cfg *ApiConfig) HandlerPostVisitors(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// 4. query DB: CreateVisitor
+	// 4. create public ID
+	pid := cfg.PublicIDGenerator()
+
+	// 5. query DB: CreateVisitor
 	queryParams := database.CreateVisitorParams{
+		PublicID:          pid,
 		Name:              strutils.InitNullString(request.Name), // name is currently nullable.
-		PurposeID:         purpose.ID,
+		PurposePublicID:   purpose.PublicID,
 		DailyTicketNumber: dtn,
 	}
 
@@ -91,24 +98,23 @@ func (cfg *ApiConfig) HandlerPostVisitors(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// 5. return response 201
+	// 6. return response 201
 	response := VisitorsResponseParameters{}
 	response.Populate(createdVisitor)
 	jsonutils.WriteJSON(w, http.StatusCreated, response)
 }
 
-func (cfg *ApiConfig) HandlerPutVisitorsByID(w http.ResponseWriter, r *http.Request) { // PUT /api/visitors/{visitor_id}
+func (cfg *ApiConfig) HandlerPutVisitorsByPublicID(w http.ResponseWriter, r *http.Request) { // PUT /api/visitors/{visitor_public_id}
 	/*
-		Handler function for dealing with PUT requests to the /api/visitors/{visitor_id} endpoint.
+		Handler function for dealing with PUT requests to the /api/visitors/{visitor_public_id} endpoint.
 		Can be accessed only by users. While one can imagine cases where visitors want to edit their name
 		after the fact (e.g. because of typos) I think the added value of allowing them to do so is minimal.
 	*/
 
 	// 1. get target visitor from URI
-	req := r.PathValue("visitor_id")
-	visitorID, err := uuid.Parse(req)
+	pvid, err := strutils.GetPublicIDFromPathValue("visitor_public_id", cfg.PublicIDLength, r)
 	if err != nil {
-		jsonutils.WriteError(w, http.StatusBadRequest, err, "endpoint is not a valid user ID")
+		jsonutils.WriteError(w, http.StatusBadRequest, err, "incorrect path value length")
 		return
 	}
 
@@ -128,17 +134,14 @@ func (cfg *ApiConfig) HandlerPutVisitorsByID(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// 4. validate request? This would have to do with the range of possible statuses. NYI
-	// No need to validate purpose: running the SetVisitorByID query with an invalid purposeID will throw an SQL error anyway.
-
-	// 5. run query
-	queryParams := database.SetVisitorByIDParams{
-		ID:        visitorID,
-		Name:      strutils.InitNullString(request.Name),
-		PurposeID: request.PurposeID,
-		Status:    request.Status,
+	// 4. run query
+	queryParams := database.SetVisitorByPublicIDParams{
+		PublicID:        pvid,
+		Name:            strutils.InitNullString(request.Name),
+		PurposePublicID: request.PurposePublicID,
+		Status:          request.Status,
 	}
-	updatedVisitor, err := cfg.DB.SetVisitorByID(r.Context(), queryParams)
+	updatedVisitor, err := cfg.DB.SetVisitorByPublicID(r.Context(), queryParams)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			jsonutils.WriteError(w, http.StatusNotFound, err, "updated visitor does not exist in database")
@@ -154,10 +157,10 @@ func (cfg *ApiConfig) HandlerPutVisitorsByID(w http.ResponseWriter, r *http.Requ
 	response.Populate(updatedVisitor)
 
 	jsonutils.WriteJSON(w, http.StatusOK, response)
-
 }
 
 func (cfg *ApiConfig) HandlerGetVisitors(w http.ResponseWriter, r *http.Request) { // GET /api/visitors
+	// only accessible to logged in users
 	// 1. get user authentication from request context
 	_, err := auth.UserFromContext(w, r, cfg.DB) // not interested in actual information about the user
 	if err != nil {
@@ -167,70 +170,43 @@ func (cfg *ApiConfig) HandlerGetVisitors(w http.ResponseWriter, r *http.Request)
 	var visitors []database.Visitor
 
 	// 2. check for query parameters (purpose, status)
-	queryParameters := r.URL.Query()
-	queryPurpose := queryParameters.Get("purpose")
-	queryStatus := queryParameters.Get("status")
+	q := r.URL.Query()
+	params := database.ListVisitorsParams{
+		PurposePublicID: strutils.QueryParameterToNullString(q.Get("purpose")),
+	}
 
 	// 2.1 status as string to status as int32
-	status64, err := strconv.ParseInt(queryStatus, 10, 32)
+	status, err := strutils.QueryParameterToNullInt(q.Get("status"))
 	if err != nil {
-		jsonutils.WriteError(w, http.StatusBadRequest, err, "query parameter 'status' only takes integer values")
+		jsonutils.WriteError(w, http.StatusBadRequest, err, "query parameter 'status' takes integers")
 		return
 	}
-	status := int32(status64) // cast as int32 as the SQL query parameter structs take this
-	// 2.2 check status for validity
-	// NYI
+	params.Status = status
 
-	// 2.3 parse purpose QP as UUID
-	purpose, err := uuid.Parse(queryPurpose)
+	// 2.3 start and end dates
+	var t sql.NullTime
+	t, err = strutils.QueryParameterToNullTime(q.Get("start_date"))
 	if err != nil {
-		jsonutils.WriteError(w, http.StatusBadRequest, err, "query parameter 'purpose' only takes UUID values")
+		jsonutils.WriteError(w, http.StatusBadRequest, err, "query parameter 'start_date' takes ISO 8601 format (YYYY-MM-DD)")
 		return
 	}
+	params.StartDate = t
+
+	t, err = strutils.QueryParameterToNullTime(q.Get("end_date"))
+	if err != nil {
+		jsonutils.WriteError(w, http.StatusBadRequest, err, "query parameter 'end_date' takes ISO 8601 format (YYYY-MM-DD)")
+		return
+	}
+	params.EndDate = t
 
 	// 3. query database
-	switch {
-	case queryPurpose != "" && queryStatus != "": // both query parameters entered
-		queryParams := database.GetVisitorsByPurposeStatusParams{
-			PurposeID: purpose,
-			Status:    status,
-		}
-		visitors, err = cfg.DB.GetVisitorsByPurposeStatus(r.Context(), queryParams)
+	visitors, err = cfg.DB.ListVisitors(r.Context(), params)
+	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			jsonutils.WriteError(w, http.StatusNotFound, err, "no visitors found in database for purpose "+queryPurpose+" and status "+queryStatus)
+			jsonutils.WriteError(w, http.StatusNotFound, err, "no visitors found under specified query parameters")
 			return
-		} else if err != nil {
-			jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (GetVisitorsByPurposeStatus)")
-			return
-		}
-
-	case queryPurpose != "" && queryStatus == "": // only purpose query parameter entered
-		visitors, err = cfg.DB.GetVisitorsByPurpose(r.Context(), purpose)
-		if errors.Is(err, sql.ErrNoRows) {
-			jsonutils.WriteError(w, http.StatusNotFound, err, "no visitors found in database for purpose "+queryPurpose)
-			return
-		} else if err != nil {
-			jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (GetVisitorsByPurpose)")
-			return
-		}
-
-	case queryPurpose == "" && queryStatus != "": // only status query parameter entered
-		visitors, err = cfg.DB.GetVisitorsByStatus(r.Context(), status)
-		if errors.Is(err, sql.ErrNoRows) {
-			jsonutils.WriteError(w, http.StatusNotFound, err, "no viistors found in database for status "+queryStatus)
-			return
-		} else if err != nil {
-			jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (GetVisitorsByStatus)")
-			return
-		}
-
-	case queryPurpose == "" && queryStatus == "": // neither query parameter entered
-		visitors, err = cfg.DB.GetVisitors(r.Context())
-		if errors.Is(err, sql.ErrNoRows) {
-			jsonutils.WriteError(w, http.StatusNotFound, err, "no visitors found in database")
-			return
-		} else if err != nil {
-			jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database")
+		} else {
+			jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (ListVisitors in HandlerGetVisitors)")
 			return
 		}
 	}
@@ -243,36 +219,16 @@ func (cfg *ApiConfig) HandlerGetVisitors(w http.ResponseWriter, r *http.Request)
 	jsonutils.WriteJSON(w, http.StatusOK, response)
 }
 
-func (cfg *ApiConfig) HandlerGetVisitorsByID(w http.ResponseWriter, r *http.Request) { // GET /api/visitors/{visitor_id}
+func (cfg *ApiConfig) HandlerGetVisitorsByPublicID(w http.ResponseWriter, r *http.Request) { // GET /api/visitors/{visitor_public_id}
 	// 1. get visitor ID from endpoint
-	req := r.PathValue("visitor_id")
-	visitorID, err := uuid.Parse(req)
+	pvid, err := strutils.GetPublicIDFromPathValue("visitor_public_id", cfg.PublicIDLength, r)
 	if err != nil {
-		jsonutils.WriteError(w, http.StatusBadRequest, err, "endpoint is not a valid user ID")
+		jsonutils.WriteError(w, http.StatusBadRequest, err, "incorrect path value length")
 		return
 	}
 
-	// 2. get auth from context
-	_, userErr := auth.UserFromContext(w, r, cfg.DB) // not interested in the actual user itself
-	accessingVisitor, visitorErr := auth.VisitorFromContext(w, r, cfg.DB)
-
-	// 3. authenticate: either for visitor with matching ID or user
-	if userErr != nil { // if userErr == nil then user authentication was provided and we are good to go
-		if visitorErr != nil { // so userErr != nil && visitorErr != nil > no authentication whatsoever is provided
-			jsonutils.WriteError(w, http.StatusUnauthorized, userErr, "authorization is required to access GET /api/visitors")
-			return
-		} else if visitorID != accessingVisitor.ID { // visitors can only GET themselves
-			jsonutils.WriteError(w, http.StatusForbidden, userErr, "visitors are only allowed to GET their own ID at /api/visitors")
-			return
-		}
-	}
-
-	// 3.1 should I put redundancy here for the user auth?
-	// because now we just assume if userErr == nil everything is fine & dandy but that's a bit of a risk
-	// NYI
-
-	// 4. run query
-	visitor, err := cfg.DB.GetVisitorByID(r.Context(), visitorID)
+	// 2. run query
+	visitor, err := cfg.DB.GetVisitorsByPublicID(r.Context(), pvid)
 	if errors.Is(err, sql.ErrNoRows) {
 		jsonutils.WriteError(w, http.StatusNotFound, err, "visitor not found in database")
 		return
@@ -281,7 +237,7 @@ func (cfg *ApiConfig) HandlerGetVisitorsByID(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// 5. write response
+	// 3. write response
 	response := VisitorsResponseParameters{}
 	response.Populate(visitor)
 	jsonutils.WriteJSON(w, http.StatusOK, response)

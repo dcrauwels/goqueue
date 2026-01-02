@@ -15,6 +15,7 @@ import (
 type configReader interface {
 	GetSecret() string
 	GetEnv() string
+	GeneratePublicID() string
 }
 
 type databaseQueryer interface {
@@ -33,7 +34,7 @@ func AdminCreateUser(w http.ResponseWriter, r *http.Request, cfg configReader, d
 	}
 
 	// 2. get req params: email & password
-	request := api.UsersRequestParameters{}
+	request := api.UsersPOSTRequestParameters{}
 	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(&request)
 	if err != nil {
@@ -46,10 +47,12 @@ func AdminCreateUser(w http.ResponseWriter, r *http.Request, cfg configReader, d
 	}
 
 	// 3. make user
+	pid := cfg.GeneratePublicID()
 	queryCreateParams := database.CreateUserParams{
 		Email:          request.Email,
 		HashedPassword: hashedPassword,
 		FullName:       request.FullName,
+		PublicID:       pid,
 	}
 	createdUser, err := db.CreateUser(r.Context(), queryCreateParams)
 	if err != nil {

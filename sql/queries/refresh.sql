@@ -1,14 +1,19 @@
 -- name: CreateRefreshToken :one
-INSERT INTO refresh_tokens (token, created_at, updated_at, user_id, expires_at, revoked_at)
+INSERT INTO refresh_tokens (token, public_id, created_at, updated_at, user_public_id, expires_at, revoked_at)
 VALUES (
     $1,
-    NOW(),
-    NOW(),
     $2,
+    NOW(),
+    NOW(),
     $3,
+    $4,
     NULL
 )
 RETURNING *;
+
+-- name: GetRefreshTokensByPublicID :one
+SELECT * FROM refresh_tokens
+WHERE public_id = $1;
 
 -- name: GetRefreshTokens :many
 SELECT * FROM refresh_tokens;
@@ -17,20 +22,20 @@ SELECT * FROM refresh_tokens;
 SELECT * FROM refresh_tokens
 WHERE token = $1;
 
--- name: GetRefreshTokensByUserID :many
+-- name: GetRefreshTokensByUserPublicID :many
 SELECT * FROM refresh_tokens
-WHERE user_id = $1 AND expires_at > NOW() AND revoked_at IS NULL;
+WHERE user_public_id = $1 AND expires_at > NOW() AND revoked_at IS NULL;
 
 -- name: RevokeRefreshTokenByToken :one
 UPDATE refresh_tokens
 SET revoked_at = NOW(), updated_at = NOW()
-WHERE TOKEN = $1
+WHERE token = $1
 RETURNING *;
 
--- name: RevokeRefreshTokenByUserID :many 
+-- name: RevokeRefreshTokenByUserPublicID :many 
 UPDATE refresh_tokens
 SET revoked_at = NOW(), updated_at = NOW()
-WHERE user_id = $1 AND expires_at > NOW() AND revoked_at IS NULL
+WHERE user_public_id = $1 AND expires_at > NOW() AND revoked_at IS NULL
 RETURNING *;
 
 -- name: RevokeRefreshTokens :many

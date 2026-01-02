@@ -8,45 +8,51 @@ package database
 import (
 	"context"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 const createRefreshToken = `-- name: CreateRefreshToken :one
-INSERT INTO refresh_tokens (token, created_at, updated_at, user_id, expires_at, revoked_at)
+INSERT INTO refresh_tokens (token, public_id, created_at, updated_at, user_public_id, expires_at, revoked_at)
 VALUES (
     $1,
-    NOW(),
-    NOW(),
     $2,
+    NOW(),
+    NOW(),
     $3,
+    $4,
     NULL
 )
-RETURNING token, created_at, updated_at, user_id, expires_at, revoked_at
+RETURNING token, created_at, updated_at, expires_at, revoked_at, public_id, user_public_id
 `
 
 type CreateRefreshTokenParams struct {
-	Token     string
-	UserID    uuid.UUID
-	ExpiresAt time.Time
+	Token        string
+	PublicID     string
+	UserPublicID string
+	ExpiresAt    time.Time
 }
 
 func (q *Queries) CreateRefreshToken(ctx context.Context, arg CreateRefreshTokenParams) (RefreshToken, error) {
-	row := q.db.QueryRowContext(ctx, createRefreshToken, arg.Token, arg.UserID, arg.ExpiresAt)
+	row := q.db.QueryRowContext(ctx, createRefreshToken,
+		arg.Token,
+		arg.PublicID,
+		arg.UserPublicID,
+		arg.ExpiresAt,
+	)
 	var i RefreshToken
 	err := row.Scan(
 		&i.Token,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.UserID,
 		&i.ExpiresAt,
 		&i.RevokedAt,
+		&i.PublicID,
+		&i.UserPublicID,
 	)
 	return i, err
 }
 
 const getRefreshTokenByToken = `-- name: GetRefreshTokenByToken :one
-SELECT token, created_at, updated_at, user_id, expires_at, revoked_at FROM refresh_tokens
+SELECT token, created_at, updated_at, expires_at, revoked_at, public_id, user_public_id FROM refresh_tokens
 WHERE token = $1
 `
 
@@ -57,15 +63,16 @@ func (q *Queries) GetRefreshTokenByToken(ctx context.Context, token string) (Ref
 		&i.Token,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.UserID,
 		&i.ExpiresAt,
 		&i.RevokedAt,
+		&i.PublicID,
+		&i.UserPublicID,
 	)
 	return i, err
 }
 
 const getRefreshTokens = `-- name: GetRefreshTokens :many
-SELECT token, created_at, updated_at, user_id, expires_at, revoked_at FROM refresh_tokens
+SELECT token, created_at, updated_at, expires_at, revoked_at, public_id, user_public_id FROM refresh_tokens
 `
 
 func (q *Queries) GetRefreshTokens(ctx context.Context) ([]RefreshToken, error) {
@@ -81,9 +88,10 @@ func (q *Queries) GetRefreshTokens(ctx context.Context) ([]RefreshToken, error) 
 			&i.Token,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.UserID,
 			&i.ExpiresAt,
 			&i.RevokedAt,
+			&i.PublicID,
+			&i.UserPublicID,
 		); err != nil {
 			return nil, err
 		}
@@ -98,13 +106,33 @@ func (q *Queries) GetRefreshTokens(ctx context.Context) ([]RefreshToken, error) 
 	return items, nil
 }
 
-const getRefreshTokensByUserID = `-- name: GetRefreshTokensByUserID :many
-SELECT token, created_at, updated_at, user_id, expires_at, revoked_at FROM refresh_tokens
-WHERE user_id = $1 AND expires_at > NOW() AND revoked_at IS NULL
+const getRefreshTokensByPublicID = `-- name: GetRefreshTokensByPublicID :one
+SELECT token, created_at, updated_at, expires_at, revoked_at, public_id, user_public_id FROM refresh_tokens
+WHERE public_id = $1
 `
 
-func (q *Queries) GetRefreshTokensByUserID(ctx context.Context, userID uuid.UUID) ([]RefreshToken, error) {
-	rows, err := q.db.QueryContext(ctx, getRefreshTokensByUserID, userID)
+func (q *Queries) GetRefreshTokensByPublicID(ctx context.Context, publicID string) (RefreshToken, error) {
+	row := q.db.QueryRowContext(ctx, getRefreshTokensByPublicID, publicID)
+	var i RefreshToken
+	err := row.Scan(
+		&i.Token,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ExpiresAt,
+		&i.RevokedAt,
+		&i.PublicID,
+		&i.UserPublicID,
+	)
+	return i, err
+}
+
+const getRefreshTokensByUserPublicID = `-- name: GetRefreshTokensByUserPublicID :many
+SELECT token, created_at, updated_at, expires_at, revoked_at, public_id, user_public_id FROM refresh_tokens
+WHERE user_public_id = $1 AND expires_at > NOW() AND revoked_at IS NULL
+`
+
+func (q *Queries) GetRefreshTokensByUserPublicID(ctx context.Context, userPublicID string) ([]RefreshToken, error) {
+	rows, err := q.db.QueryContext(ctx, getRefreshTokensByUserPublicID, userPublicID)
 	if err != nil {
 		return nil, err
 	}
@@ -116,9 +144,10 @@ func (q *Queries) GetRefreshTokensByUserID(ctx context.Context, userID uuid.UUID
 			&i.Token,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.UserID,
 			&i.ExpiresAt,
 			&i.RevokedAt,
+			&i.PublicID,
+			&i.UserPublicID,
 		); err != nil {
 			return nil, err
 		}
@@ -136,8 +165,8 @@ func (q *Queries) GetRefreshTokensByUserID(ctx context.Context, userID uuid.UUID
 const revokeRefreshTokenByToken = `-- name: RevokeRefreshTokenByToken :one
 UPDATE refresh_tokens
 SET revoked_at = NOW(), updated_at = NOW()
-WHERE TOKEN = $1
-RETURNING token, created_at, updated_at, user_id, expires_at, revoked_at
+WHERE token = $1
+RETURNING token, created_at, updated_at, expires_at, revoked_at, public_id, user_public_id
 `
 
 func (q *Queries) RevokeRefreshTokenByToken(ctx context.Context, token string) (RefreshToken, error) {
@@ -147,22 +176,23 @@ func (q *Queries) RevokeRefreshTokenByToken(ctx context.Context, token string) (
 		&i.Token,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.UserID,
 		&i.ExpiresAt,
 		&i.RevokedAt,
+		&i.PublicID,
+		&i.UserPublicID,
 	)
 	return i, err
 }
 
-const revokeRefreshTokenByUserID = `-- name: RevokeRefreshTokenByUserID :many
+const revokeRefreshTokenByUserPublicID = `-- name: RevokeRefreshTokenByUserPublicID :many
 UPDATE refresh_tokens
 SET revoked_at = NOW(), updated_at = NOW()
-WHERE user_id = $1 AND expires_at > NOW() AND revoked_at IS NULL
-RETURNING token, created_at, updated_at, user_id, expires_at, revoked_at
+WHERE user_public_id = $1 AND expires_at > NOW() AND revoked_at IS NULL
+RETURNING token, created_at, updated_at, expires_at, revoked_at, public_id, user_public_id
 `
 
-func (q *Queries) RevokeRefreshTokenByUserID(ctx context.Context, userID uuid.UUID) ([]RefreshToken, error) {
-	rows, err := q.db.QueryContext(ctx, revokeRefreshTokenByUserID, userID)
+func (q *Queries) RevokeRefreshTokenByUserPublicID(ctx context.Context, userPublicID string) ([]RefreshToken, error) {
+	rows, err := q.db.QueryContext(ctx, revokeRefreshTokenByUserPublicID, userPublicID)
 	if err != nil {
 		return nil, err
 	}
@@ -174,9 +204,10 @@ func (q *Queries) RevokeRefreshTokenByUserID(ctx context.Context, userID uuid.UU
 			&i.Token,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.UserID,
 			&i.ExpiresAt,
 			&i.RevokedAt,
+			&i.PublicID,
+			&i.UserPublicID,
 		); err != nil {
 			return nil, err
 		}
@@ -195,7 +226,7 @@ const revokeRefreshTokens = `-- name: RevokeRefreshTokens :many
 UPDATE refresh_tokens
 SET revoked_at = NOW(), updated_at = NOW()
 WHERE expires_at > NOW() AND revoked_at IS NULL
-returning token, created_at, updated_at, user_id, expires_at, revoked_at
+returning token, created_at, updated_at, expires_at, revoked_at, public_id, user_public_id
 `
 
 func (q *Queries) RevokeRefreshTokens(ctx context.Context) ([]RefreshToken, error) {
@@ -211,9 +242,10 @@ func (q *Queries) RevokeRefreshTokens(ctx context.Context) ([]RefreshToken, erro
 			&i.Token,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.UserID,
 			&i.ExpiresAt,
 			&i.RevokedAt,
+			&i.PublicID,
+			&i.UserPublicID,
 		); err != nil {
 			return nil, err
 		}

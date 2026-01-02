@@ -7,7 +7,6 @@ import (
 
 	"github.com/dcrauwels/goqueue/internal/database"
 	"github.com/dcrauwels/goqueue/jsonutils"
-	"github.com/google/uuid"
 )
 
 func UserTypeFromHeader(w http.ResponseWriter, r *http.Request, cfg configReader) (string, error) {
@@ -30,7 +29,7 @@ func authFromHeader[T any](
 	r *http.Request,
 	cfg configReader,
 	expectedUserType string,
-	queryFunc func(context.Context, uuid.UUID) (T, error),
+	queryFunc func(context.Context, string) (T, error),
 ) (T, error) {
 	// generic function to generate UserFromHeader and VisitorFromHeader without having to write the same function twice
 	var zero T
@@ -64,11 +63,11 @@ func authFromHeader[T any](
 }
 
 func UserFromHeader(w http.ResponseWriter, r *http.Request, cfg configReader, db databaseQueryer) (database.User, error) {
-	return authFromHeader(w, r, cfg, "user", db.GetUserByID)
+	return authFromHeader(w, r, cfg, "user", db.GetUserByPublicID)
 }
 
 func VisitorFromHeader(w http.ResponseWriter, r *http.Request, cfg configReader, db databaseQueryer) (database.Visitor, error) {
-	return authFromHeader(w, r, cfg, "visitor", db.GetVisitorByID)
+	return authFromHeader(w, r, cfg, "visitor", db.GetVisitorsByPublicID)
 }
 
 func IsAdminFromHeader(w http.ResponseWriter, r *http.Request, cfg configReader, db databaseQueryer) (bool, error) {

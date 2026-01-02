@@ -14,13 +14,13 @@ import (
 	"github.com/google/uuid"
 )
 
-type UsersRequestParameters struct {
+type UsersPOSTRequestParameters struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 	FullName string `json:"full_name"`
 }
 
-type UsersAdminRequestParameters struct {
+type UsersPOSTAdminRequestParameters struct {
 	Email    string `json:"email"`
 	FullName string `json:"full_name"`
 	IsAdmin  bool   `json:"is_admin"`
@@ -29,6 +29,7 @@ type UsersAdminRequestParameters struct {
 
 type UsersResponseParameters struct {
 	ID        uuid.UUID `json:"id"`
+	PublicID  string    `json:"public_id"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 	Email     string    `json:"email"`
@@ -39,6 +40,7 @@ type UsersResponseParameters struct {
 
 func (urp *UsersResponseParameters) Populate(u database.User) {
 	urp.ID = u.ID
+	urp.PublicID = u.PublicID
 	urp.CreatedAt = u.CreatedAt
 	urp.UpdatedAt = u.UpdatedAt
 	urp.Email = u.Email
@@ -47,7 +49,7 @@ func (urp *UsersResponseParameters) Populate(u database.User) {
 	urp.IsActive = u.IsActive
 }
 
-func ProcessUsersParameters(w http.ResponseWriter, request UsersRequestParameters) (string, error) {
+func ProcessUsersParameters(w http.ResponseWriter, request UsersPOSTRequestParameters) (string, error) {
 	/*
 		This function checks if the parameters in request (email, password and full name) are valid for use in an INSERT query to the users table.
 		Returns a hashed password (using auth.HashPassword) and an error. If the function fails, an empty string is returned instead.
@@ -55,7 +57,7 @@ func ProcessUsersParameters(w http.ResponseWriter, request UsersRequestParameter
 
 	//email valid
 	if err := strutils.ValidateEmail(request.Email); err != nil {
-		jsonutils.WriteError(w, http.StatusBadRequest, err, "password formatting invalid: please use jdoe@provider.tld")
+		jsonutils.WriteError(w, http.StatusBadRequest, err, "email formatting invalid: please use jdoe@provider.tld")
 		return "", err
 	}
 	//password valid (aA0)
@@ -74,9 +76,10 @@ func ProcessUsersParameters(w http.ResponseWriter, request UsersRequestParameter
 	return hashedPassword, nil
 }
 
-func (cfg *ApiConfig) HandlerPostUsers(w http.ResponseWriter, r *http.Request) { // POST /api/users
+// POST /api/users (admin only)
+func (cfg *ApiConfig) HandlerPostUsers(w http.ResponseWriter, r *http.Request) {
 	// function to CREATE new user
-	// check for admin status in accessing user
+	// 1. check for admin status in accessing user
 	accessingUser, err := auth.UserFromContext(w, r, cfg.DB)
 	if err != nil {
 		return
@@ -85,25 +88,30 @@ func (cfg *ApiConfig) HandlerPostUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// get request data
+	// 2. get request data
 	decoder := json.NewDecoder(r.Body)
-	reqParams := UsersRequestParameters{}
+	reqParams := UsersPOSTRequestParameters{}
 	err = decoder.Decode(&reqParams)
 	if err != nil {
 		jsonutils.WriteError(w, http.StatusBadRequest, err, "JSON formatting invalid")
 		return
 	}
 
-	// check request for validity & hash password
-	hashedPassword, err := ProcessUsersParameters(w, reqParams)
+	// 3. check request for validity & hash password
+	hashedPassword, err := ProcessUsersParameters(w, reqParams) // this function already calls jsonutils.WriteError, no need to do so here
 	if err != nil {
 		return
 	}
 
-	// run query CreateUser
+	// 4. generate publicid
+	pid := cfg.PublicIDGenerator()
+
+	// 5. run query CreateUser
 	queryParams := database.CreateUserParams{
+		PublicID:       pid,
 		Email:          reqParams.Email,
 		HashedPassword: hashedPassword,
+		FullName:       reqParams.FullName,
 	}
 	createdUser, err := cfg.DB.CreateUser(r.Context(), queryParams)
 	if err != nil {
@@ -119,10 +127,11 @@ func (cfg *ApiConfig) HandlerPostUsers(w http.ResponseWriter, r *http.Request) {
 
 }
 
+// PUT /api/users
 func (cfg *ApiConfig) HandlerPutUsers(w http.ResponseWriter, r *http.Request) { // PUT /api/users
 	/*
 		Function to change own details for user. Only things a user can change about himself are email, password and fullname
-		Currently the way this is set up is that a user changes himself. But perhaps it would be better to only keep the PUT /api/users/{user_id} setup and
+		Currently the way this is set up is that a user changes himself. But perhaps it would be better to only keep the PUT /api/users/{user_public_id} setup and
 		remove this endpoint.
 	*/
 
@@ -135,7 +144,7 @@ func (cfg *ApiConfig) HandlerPutUsers(w http.ResponseWriter, r *http.Request) { 
 
 	// 2. get request data
 	decoder := json.NewDecoder(r.Body)
-	reqParams := UsersRequestParameters{}
+	reqParams := UsersPOSTRequestParameters{}
 	err = decoder.Decode(&reqParams)
 	if err != nil {
 		jsonutils.WriteError(w, http.StatusBadRequest, err, "JSON formatting invalid")
@@ -156,7 +165,7 @@ func (cfg *ApiConfig) HandlerPutUsers(w http.ResponseWriter, r *http.Request) { 
 	}
 	updatedUser, err := cfg.DB.SetUserEmailPasswordByID(r.Context(), queryParams)
 	if errors.Is(err, sql.ErrNoRows) {
-		jsonutils.WriteError(w, http.StatusForbidden, err, "user does not exist. How did you do this?")
+		jsonutils.WriteError(w, http.StatusNotFound, err, "user does not exist. How did you do this?")
 		return
 	} else if err != nil {
 		jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database")
@@ -170,8 +179,9 @@ func (cfg *ApiConfig) HandlerPutUsers(w http.ResponseWriter, r *http.Request) { 
 
 }
 
-func (cfg *ApiConfig) HandlerPutUsersByID(w http.ResponseWriter, r *http.Request) { // PUT /api/users/{user_id}
-	// function to UPDATE specific user by ID
+// PUT /api/users/{user_public_id}
+func (cfg *ApiConfig) HandlerPutUsersByID(w http.ResponseWriter, r *http.Request) {
+	// function to UPDATE specific user by public ID
 	// requires isadmin status from accessing user
 
 	// 1. retrieve accessing user
@@ -182,15 +192,14 @@ func (cfg *ApiConfig) HandlerPutUsersByID(w http.ResponseWriter, r *http.Request
 	}
 
 	// 2. retrieve target user from uri
-	req := r.PathValue("user_id")
-	userID, err := uuid.Parse(req)
+	pid, err := strutils.GetPublicIDFromPathValue("user_public_id", cfg.PublicIDLength, r)
 	if err != nil {
-		jsonutils.WriteError(w, http.StatusBadRequest, err, "endpoint is not a valid user ID")
+		jsonutils.WriteError(w, http.StatusBadRequest, err, "incorrect path value length")
 		return
 	}
 
 	// 3. retrieve request data
-	request := UsersAdminRequestParameters{} // note that we will be filling out nearly all other values so
+	request := UsersPOSTAdminRequestParameters{}
 	decoder := json.NewDecoder(r.Body)
 	err = decoder.Decode(&request)
 	if err != nil {
@@ -200,7 +209,7 @@ func (cfg *ApiConfig) HandlerPutUsersByID(w http.ResponseWriter, r *http.Request
 
 	// 4. auth: either IsAdmin or userID match
 	if !accessingUser.IsAdmin {
-		if accessingUser.ID != userID {
+		if accessingUser.PublicID != pid {
 			jsonutils.WriteError(w, http.StatusForbidden, errors.New("user not authorized to send a PUT request to this endpoint"), "this user account is not authorized to send a PUT request to this endpoint")
 			return
 		} else if (request.IsAdmin && !accessingUser.IsAdmin) || (request.IsActive != accessingUser.IsActive) { // non-admins cannot set themselves to admin obviously or (de)activate themselves
@@ -210,14 +219,14 @@ func (cfg *ApiConfig) HandlerPutUsersByID(w http.ResponseWriter, r *http.Request
 	}
 
 	// 5. run query
-	queryParams := database.SetUserByIDParams{
-		ID:       userID,
+	queryParams := database.SetUserByPublicIDParams{
+		PublicID: pid,
 		Email:    request.Email,
 		FullName: request.FullName,
 		IsAdmin:  request.IsAdmin,
 		IsActive: request.IsActive,
 	}
-	updatedUser, err := cfg.DB.SetUserByID(r.Context(), queryParams)
+	updatedUser, err := cfg.DB.SetUserByPublicID(r.Context(), queryParams)
 	if errors.Is(err, sql.ErrNoRows) {
 		jsonutils.WriteError(w, http.StatusNotFound, err, "user not found")
 		return
@@ -264,7 +273,7 @@ func (cfg *ApiConfig) HandlerGetUsers(w http.ResponseWriter, r *http.Request) { 
 	jsonutils.WriteJSON(w, http.StatusOK, response)
 }
 
-func (cfg *ApiConfig) HandlerGetUsersByID(w http.ResponseWriter, r *http.Request) { // GET /api/users/{user_id}
+func (cfg *ApiConfig) HandlerGetUsersByID(w http.ResponseWriter, r *http.Request) { // GET /api/users/{user_public_id}
 	/*
 		Handler function to retrieve a full user (including is_admin) based on the UUID. This needs to be accessible to all clients, even unauthenticated
 		ones, because a visitor needs to be able to see who is calling him. I might decide to change this at a later date though.
@@ -285,24 +294,28 @@ func (cfg *ApiConfig) HandlerGetUsersByID(w http.ResponseWriter, r *http.Request
 	}
 
 	// 2. get user ID from request uri
-	req := r.PathValue("user_id")
+	pid, err := strutils.GetPublicIDFromPathValue("user_public_id", cfg.PublicIDLength, r)
+	if err != nil {
+		jsonutils.WriteError(w, http.StatusBadRequest, err, "incorrect path value length")
+		return
+	}
 
 	// 3. check for validity
-	userID, err := uuid.Parse(req)
-	if err != nil {
-		jsonutils.WriteError(w, http.StatusBadRequest, err, "endpoint is not a valid user ID")
+	if len(pid) != cfg.PublicIDLength {
+		jsonutils.WriteError(w, http.StatusBadRequest, errors.New("incorrect public ID length"), "invalid public ID length provided in endpoint")
 		return
 	}
 
 	// 4. run query
-	user, err := cfg.GetUserByID(r.Context(), userID)
+	user, err := cfg.DB.GetUserByPublicID(r.Context(), pid)
 	if errors.Is(err, sql.ErrNoRows) {
 		jsonutils.WriteError(w, http.StatusNotFound, err, "user not found")
 		return
 	} else if err != nil {
-		jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database")
+		jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database(GetUserByPublicID in HandlerGetUsersByID)")
 		return
 	}
+
 	// 5. write response
 	response := UsersResponseParameters{}
 	response.Populate(user)

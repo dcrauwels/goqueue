@@ -12,24 +12,26 @@ import (
 )
 
 const createPurpose = `-- name: CreatePurpose :one
-INSERT INTO purposes (id, created_at, updated_at, purpose_name, parent_purpose_id)
+INSERT INTO purposes (id, public_id, created_at, updated_at, purpose_name, parent_purpose_id)
 VALUES (
     gen_random_uuid(),
-    NOW(),
-    NOW(),
     $1,
-    $2
+    NOW(),
+    NOW(),
+    $2,
+    $3
 )
-RETURNING id, created_at, updated_at, purpose_name, parent_purpose_id
+RETURNING id, created_at, updated_at, purpose_name, parent_purpose_id, public_id
 `
 
 type CreatePurposeParams struct {
+	PublicID        string
 	PurposeName     string
 	ParentPurposeID uuid.NullUUID
 }
 
 func (q *Queries) CreatePurpose(ctx context.Context, arg CreatePurposeParams) (Purpose, error) {
-	row := q.db.QueryRowContext(ctx, createPurpose, arg.PurposeName, arg.ParentPurposeID)
+	row := q.db.QueryRowContext(ctx, createPurpose, arg.PublicID, arg.PurposeName, arg.ParentPurposeID)
 	var i Purpose
 	err := row.Scan(
 		&i.ID,
@@ -37,12 +39,13 @@ func (q *Queries) CreatePurpose(ctx context.Context, arg CreatePurposeParams) (P
 		&i.UpdatedAt,
 		&i.PurposeName,
 		&i.ParentPurposeID,
+		&i.PublicID,
 	)
 	return i, err
 }
 
 const getPurposes = `-- name: GetPurposes :many
-SELECT id, created_at, updated_at, purpose_name, parent_purpose_id FROM purposes
+SELECT id, created_at, updated_at, purpose_name, parent_purpose_id, public_id FROM purposes
 `
 
 func (q *Queries) GetPurposes(ctx context.Context) ([]Purpose, error) {
@@ -60,6 +63,7 @@ func (q *Queries) GetPurposes(ctx context.Context) ([]Purpose, error) {
 			&i.UpdatedAt,
 			&i.PurposeName,
 			&i.ParentPurposeID,
+			&i.PublicID,
 		); err != nil {
 			return nil, err
 		}
@@ -75,7 +79,7 @@ func (q *Queries) GetPurposes(ctx context.Context) ([]Purpose, error) {
 }
 
 const getPurposesByID = `-- name: GetPurposesByID :one
-SELECT id, created_at, updated_at, purpose_name, parent_purpose_id FROM purposes
+SELECT id, created_at, updated_at, purpose_name, parent_purpose_id, public_id FROM purposes
 WHERE id = $1
 `
 
@@ -88,12 +92,13 @@ func (q *Queries) GetPurposesByID(ctx context.Context, id uuid.UUID) (Purpose, e
 		&i.UpdatedAt,
 		&i.PurposeName,
 		&i.ParentPurposeID,
+		&i.PublicID,
 	)
 	return i, err
 }
 
 const getPurposesByName = `-- name: GetPurposesByName :one
-SELECT id, created_at, updated_at, purpose_name, parent_purpose_id FROM purposes
+SELECT id, created_at, updated_at, purpose_name, parent_purpose_id, public_id FROM purposes
 WHERE purpose_name = $1
 `
 
@@ -106,12 +111,13 @@ func (q *Queries) GetPurposesByName(ctx context.Context, purposeName string) (Pu
 		&i.UpdatedAt,
 		&i.PurposeName,
 		&i.ParentPurposeID,
+		&i.PublicID,
 	)
 	return i, err
 }
 
 const getPurposesByParent = `-- name: GetPurposesByParent :many
-SELECT id, created_at, updated_at, purpose_name, parent_purpose_id FROM purposes
+SELECT id, created_at, updated_at, purpose_name, parent_purpose_id, public_id FROM purposes
 WHERE parent_purpose_id = $1
 `
 
@@ -130,6 +136,7 @@ func (q *Queries) GetPurposesByParent(ctx context.Context, parentPurposeID uuid.
 			&i.UpdatedAt,
 			&i.PurposeName,
 			&i.ParentPurposeID,
+			&i.PublicID,
 		); err != nil {
 			return nil, err
 		}
@@ -144,11 +151,30 @@ func (q *Queries) GetPurposesByParent(ctx context.Context, parentPurposeID uuid.
 	return items, nil
 }
 
+const getPurposesByPublicID = `-- name: GetPurposesByPublicID :one
+SELECT id, created_at, updated_at, purpose_name, parent_purpose_id, public_id FROM purposes
+WHERE public_id = $1
+`
+
+func (q *Queries) GetPurposesByPublicID(ctx context.Context, publicID string) (Purpose, error) {
+	row := q.db.QueryRowContext(ctx, getPurposesByPublicID, publicID)
+	var i Purpose
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.PurposeName,
+		&i.ParentPurposeID,
+		&i.PublicID,
+	)
+	return i, err
+}
+
 const setPurpose = `-- name: SetPurpose :one
 UPDATE purposes
-SET purpose_name = $2, parent_purpose_id = $3
+SET purpose_name = $2, parent_purpose_id = $3, updated_at = NOW()
 WHERE id = $1
-RETURNING id, created_at, updated_at, purpose_name, parent_purpose_id
+RETURNING id, created_at, updated_at, purpose_name, parent_purpose_id, public_id
 `
 
 type SetPurposeParams struct {
@@ -166,15 +192,43 @@ func (q *Queries) SetPurpose(ctx context.Context, arg SetPurposeParams) (Purpose
 		&i.UpdatedAt,
 		&i.PurposeName,
 		&i.ParentPurposeID,
+		&i.PublicID,
+	)
+	return i, err
+}
+
+const setPurposeByPublicID = `-- name: SetPurposeByPublicID :one
+UPDATE purposes
+SET purpose_name = $2, parent_purpose_id = $3, updated_at = NOW()
+WHERE public_id = $1
+RETURNING id, created_at, updated_at, purpose_name, parent_purpose_id, public_id
+`
+
+type SetPurposeByPublicIDParams struct {
+	PublicID        string
+	PurposeName     string
+	ParentPurposeID uuid.NullUUID
+}
+
+func (q *Queries) SetPurposeByPublicID(ctx context.Context, arg SetPurposeByPublicIDParams) (Purpose, error) {
+	row := q.db.QueryRowContext(ctx, setPurposeByPublicID, arg.PublicID, arg.PurposeName, arg.ParentPurposeID)
+	var i Purpose
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.PurposeName,
+		&i.ParentPurposeID,
+		&i.PublicID,
 	)
 	return i, err
 }
 
 const setPurposeName = `-- name: SetPurposeName :one
 UPDATE purposes
-SET purpose_name = $2
+SET purpose_name = $2, updated_at = NOW()
 WHERE id = $1
-RETURNING id, created_at, updated_at, purpose_name, parent_purpose_id
+RETURNING id, created_at, updated_at, purpose_name, parent_purpose_id, public_id
 `
 
 type SetPurposeNameParams struct {
@@ -191,15 +245,16 @@ func (q *Queries) SetPurposeName(ctx context.Context, arg SetPurposeNameParams) 
 		&i.UpdatedAt,
 		&i.PurposeName,
 		&i.ParentPurposeID,
+		&i.PublicID,
 	)
 	return i, err
 }
 
 const setPurposeParentID = `-- name: SetPurposeParentID :one
 UPDATE purposes
-SET parent_purpose_id = $2
+SET parent_purpose_id = $2, updated_at = NOW()
 WHERE id = $1
-RETURNING id, created_at, updated_at, purpose_name, parent_purpose_id
+RETURNING id, created_at, updated_at, purpose_name, parent_purpose_id, public_id
 `
 
 type SetPurposeParentIDParams struct {
@@ -216,15 +271,16 @@ func (q *Queries) SetPurposeParentID(ctx context.Context, arg SetPurposeParentID
 		&i.UpdatedAt,
 		&i.PurposeName,
 		&i.ParentPurposeID,
+		&i.PublicID,
 	)
 	return i, err
 }
 
 const setPurposeParentIDByParentPurposeName = `-- name: SetPurposeParentIDByParentPurposeName :one
 UPDATE purposes
-SET parent_purpose_id = (SELECT purposes.id FROM purposes WHERE purposes.purpose_name = $2)
+SET parent_purpose_id = (SELECT purposes.id FROM purposes WHERE purposes.purpose_name = $2), updated_at = NOW()
 WHERE purposes.id = $1
-RETURNING id, created_at, updated_at, purpose_name, parent_purpose_id
+RETURNING id, created_at, updated_at, purpose_name, parent_purpose_id, public_id
 `
 
 type SetPurposeParentIDByParentPurposeNameParams struct {
@@ -241,6 +297,7 @@ func (q *Queries) SetPurposeParentIDByParentPurposeName(ctx context.Context, arg
 		&i.UpdatedAt,
 		&i.PurposeName,
 		&i.ParentPurposeID,
+		&i.PublicID,
 	)
 	return i, err
 }

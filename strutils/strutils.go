@@ -3,7 +3,11 @@ package strutils
 import (
 	"database/sql"
 	"errors"
+	"net/http"
 	"net/mail"
+	"os"
+	"strconv"
+	"time"
 	"unicode"
 )
 
@@ -31,4 +35,114 @@ func InitNullString(s string) sql.NullString {
 		Valid:  true,
 	}
 	return r
+}
+
+func GetIntegerEnvironmentVariable(s string) (int, error) {
+	/* Retrieves an environment value using os.LookupEnv, then converts it to an integer. Uses os.LookupEnv and */
+	var r int
+	ErrNoValueFound := errors.New("no environment value found for this key")
+	ErrValueNotNumeric := errors.New("the environment for this key cannot be converted to an integer")
+	ErrValueNegative := errors.New("negative or null environment values are not allowed")
+
+	envVar, ok := os.LookupEnv(s)
+	if !ok { // this means there was no value found for keystring s
+		return r, ErrNoValueFound
+	}
+
+	r, err := strconv.Atoi(envVar)
+	if err != nil { // this means the value passed into Atoi cannot be converted into an integer - i.e. it contains non-numeric characters
+		return r, ErrValueNotNumeric
+	} else if r <= 0 {
+		return r, ErrValueNegative
+	}
+
+	return r, nil
+}
+
+func GetPublicIDFromPathValue(path string, publicIDLength int, r *http.Request) (string, error) {
+	// used for retrieving public IDs from path values
+	// e.g. the value for 'user_public_id' in GET /api/users/{user_public_id}
+	// checks if the public ID provided in the path is of the correct length as specified in the .env config file
+
+	ErrIncorrectPublicIDLength := errors.New("path value public ID has incorrect length")
+
+	result := r.PathValue(path)
+	if len(result) != publicIDLength {
+		return "", ErrIncorrectPublicIDLength
+	} else {
+		return result, nil
+	}
+}
+
+func QueryParameterToNullString(s string) sql.NullString {
+	// used to convert strings retrieved from query parameters (e.g. through r.URL.Query().Get()) to sql.NullStrings.
+	// Empty query parameters are returned by r.URL.Query().Get() as "", which is why the Valid field uses the logic below.
+	return sql.NullString{
+		String: s,
+		Valid:  s != "",
+	}
+}
+
+func QueryParameterToNullInt(s string) (sql.NullInt32, error) {
+	// used to convert strings retrieved from query parameters (e.g. through r.URL.Query().Get()) to sql.NullInt32s.
+	// Note that this function returns an error, unlike QueryParameterToNullString, because there is a possibility
+	// that a request is sent with an impossible query parameter, e.g. "?status=abc" where it only takes ints. In that
+	// case this function will return an error.
+
+	r := sql.NullInt32{
+		Valid: false,
+	}
+
+	if s != "" {
+		i64, err := strconv.Atoi(s)
+		if err != nil {
+			return r, err
+		}
+
+		r.Int32 = int32(i64)
+		r.Valid = true
+	}
+
+	return r, nil
+}
+
+func QueryParameterToNullBool(s string) (sql.NullBool, error) {
+	/*
+		used to convert strings retrieved from query parameters (e.g. through http.Reader.URL.Query()) to sql.NullBools.
+		Note that this function returns an error, unlike QueryParameterToNullString, because there is a possibility that a request
+		is sent with a value that does not parse as a boolean. In reality, the error returned is the same one thrown by strconv.Parsebool().
+	*/
+	r := sql.NullBool{
+		Valid: false,
+	}
+
+	if s != "" {
+		b, err := strconv.ParseBool(s)
+		if err != nil {
+			return r, err
+		}
+
+		r.Bool = b
+		r.Valid = true
+	}
+
+	return r, nil
+
+}
+
+func QueryParameterToNullTime(s string) (sql.NullTime, error) {
+	r := sql.NullTime{
+		Valid: false,
+	}
+	if s != "" {
+		t, err := time.Parse("2006-01-02", s)
+		if err != nil {
+			return r, err
+		}
+
+		r.Time = t
+		r.Valid = true
+
+	}
+	return r, nil
 }
