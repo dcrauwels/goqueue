@@ -7,6 +7,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 )
 
 const createServiceLogs = `-- name: CreateServiceLogs :one
@@ -187,6 +188,63 @@ func (q *Queries) GetServiceLogsByPublicID(ctx context.Context, publicID string)
 		&i.DeskPublicID,
 	)
 	return i, err
+}
+
+const listServiceLogs = `-- name: ListServiceLogs :many
+SELECT id, created_at, updated_at, called_at, is_active, public_id, user_public_id, visitor_public_id, desk_public_id FROM service_logs
+WHERE ($1::text IS NULL OR user_public_id = $1)
+AND ($2::text IS NULL OR visitor_public_id = $2)
+AND ($3::text IS NULL OR desk_public_id = $3)
+AND ($4::timestamp IS NULL OR created_at >= $4)
+AND ($5::timestamp IS NULL OR created_at < $5)
+ORDER BY created_at ASC
+`
+
+type ListServiceLogsParams struct {
+	UserPublicID    sql.NullString
+	VisitorPublicID sql.NullString
+	DeskPublicID    sql.NullString
+	StartDate       sql.NullTime
+	EndDate         sql.NullTime
+}
+
+func (q *Queries) ListServiceLogs(ctx context.Context, arg ListServiceLogsParams) ([]ServiceLog, error) {
+	rows, err := q.db.QueryContext(ctx, listServiceLogs,
+		arg.UserPublicID,
+		arg.VisitorPublicID,
+		arg.DeskPublicID,
+		arg.StartDate,
+		arg.EndDate,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ServiceLog
+	for rows.Next() {
+		var i ServiceLog
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.CalledAt,
+			&i.IsActive,
+			&i.PublicID,
+			&i.UserPublicID,
+			&i.VisitorPublicID,
+			&i.DeskPublicID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const setServiceLogsByPublicID = `-- name: SetServiceLogsByPublicID :one

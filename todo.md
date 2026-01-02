@@ -84,7 +84,7 @@
 ## Service log implementation
 - [x] Define endpoints for /api/servicelogs. Probably POST, GET, PUT.
 - [x] Write a migration for the service_logs table to accommodate public ids in tables users, visitors, desks.
-- [?] Define a GET /api/servicelogs/{visitor_id}/status endpoint. This is meant for a visitor to check their own status ideally.
+- [x] Define a GET /api/servicelogs/{visitor_id}/status endpoint. This is meant for a visitor to check their own status ideally. > see next todo
 - [ ] Instead of the todo above, how about query parameters under GET /api/servicelogs?user=user_public_id&visitor=visitor_public_id&desk=desk_public_id ? 
 - [ ] Define a /api/queue endpoint which takes GET requests and is meant for a screen to display all WAITING / CALLED / SERVING visitors.
 - [ ] Write handlers for all of the aforementioned endpoints.
@@ -96,6 +96,7 @@
 - [x] Specify the different errors auth.ValidateJWT can spit out to match the reasons for throwing an error. (Token expired, invalid, etc.) > turns out the JWT package has these predefined.
 - [ ] Decide on whether to keep PUT /api/users as well as PUT /api/users/{user_id} or delete the former.
 - [ ] Currently GET /api/users requires admin status. Is that actually necessary?
+- [ ] Related to the previous query: say a malicious actor gains access to an admin account. Does that grant them access to all user accounts through GET /api/users and then  
 - [ ] There is currently a privacy problem where visitors can be queried historically. The identifying information is really in their name more than anything else. So that needs to be periodically removed from the visitors table, as it's not relevant for statistical purposes either.
 - [ ] The scenario where a non-admin user accesses their own user_id under POST /api/revoke should redirect to /api/logout, not just throw a bad request error.
 
