@@ -7,6 +7,7 @@ import (
 	"net/mail"
 	"os"
 	"strconv"
+	"time"
 	"unicode"
 )
 
@@ -92,13 +93,15 @@ func QueryParameterToNullInt(s string) (sql.NullInt32, error) {
 		Valid: false,
 	}
 
-	i64, err := strconv.Atoi(s)
-	if err != nil {
-		return r, err
-	}
+	if s != "" {
+		i64, err := strconv.Atoi(s)
+		if err != nil {
+			return r, err
+		}
 
-	r.Int32 = int32(i64)
-	r.Valid = true
+		r.Int32 = int32(i64)
+		r.Valid = true
+	}
 
 	return r, nil
 }
@@ -113,14 +116,33 @@ func QueryParameterToNullBool(s string) (sql.NullBool, error) {
 		Valid: false,
 	}
 
-	b, err := strconv.ParseBool(s)
-	if err != nil {
-		return r, err
-	}
+	if s != "" {
+		b, err := strconv.ParseBool(s)
+		if err != nil {
+			return r, err
+		}
 
-	r.Bool = b
-	r.Valid = true
+		r.Bool = b
+		r.Valid = true
+	}
 
 	return r, nil
 
+}
+
+func QueryParameterToNullTime(s string) (sql.NullTime, error) {
+	r := sql.NullTime{
+		Valid: false,
+	}
+	if s != "" {
+		t, err := time.Parse("2006-01-02", s)
+		if err != nil {
+			return r, err
+		}
+
+		r.Time = t
+		r.Valid = true
+
+	}
+	return r, nil
 }

@@ -159,6 +159,56 @@ func (cfg *ApiConfig) HandlerPutServicelogsByID(w http.ResponseWriter, r *http.R
 
 // GET /api/servicelogs (user only)
 func (cfg *ApiConfig) HandlerGetServicelogs(w http.ResponseWriter, r *http.Request) {
+	// 1. get user auth?
+	accessingUser, err := auth.UserFromContext(w, r, cfg.DB)
+	if err != nil {
+		jsonutils.WriteError(w, http.StatusUnauthorized, err, "user authorisation is required for this endpoint")
+		return
+	} else if !accessingUser.IsActive {
+		jsonutils.WriteError(w, http.StatusForbidden, err, "accessing user account is inactive")
+		return
+	}
+
+	// 2. get query parameters
+	q := r.URL.Query()
+	params := database.ListServiceLogsParams{}
+	params.UserPublicID = strutils.QueryParameterToNullString(q.Get("user_public_id"))
+	params.VisitorPublicID = strutils.QueryParameterToNullString(q.Get("visitor_public_id"))
+	params.DeskPublicID = strutils.QueryParameterToNullString(q.Get("desk_public_id"))
+
+	var t sql.NullTime
+	t, err = strutils.QueryParameterToNullTime(q.Get("start_date"))
+	if err != nil {
+		jsonutils.WriteError(w, http.StatusBadRequest, err, "query parameter 'start_date' takes ISO 8601 format (YYYY-MM-DD)")
+		return
+	}
+	params.StartDate = t
+
+	t, err = strutils.QueryParameterToNullTime(q.Get("end_date"))
+	if err != nil {
+		jsonutils.WriteError(w, http.StatusBadRequest, err, "query parameter 'end_date' takes ISO 8601 format (YYYY-MM-DD)")
+		return
+	}
+	params.EndDate = t
+
+	// 3. run query
+	serviceLogs, err := cfg.DB.ListServiceLogs(r.Context(), params)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			jsonutils.WriteError(w, http.StatusNotFound, err, "no rows found for the provided query parameters")
+			return
+		} else {
+			jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (ListServiceLogs in HandlerGetServiceLogs)")
+			return
+		}
+	}
+
+	// 4. write response
+	response := make([]ServicelogsResponseParameters, len(serviceLogs))
+	for i, s := range serviceLogs {
+		response[i].Populate(s)
+	}
+	jsonutils.WriteJSON(w, http.StatusOK, response)
 }
 
 // GET /api/servicelogs/{servicelog_public_id}
@@ -186,7 +236,3 @@ func (cfg *ApiConfig) HandlerGetServicelogsByPublicID(w http.ResponseWriter, r *
 	response.Populate(servicelog)
 	jsonutils.WriteJSON(w, http.StatusOK, response)
 }
-
-// GET /api/servicelogs/{visitor_id} not convinced this is needed
-//func (cfg *ApiConfig) HandlerGetServicelogsByVisitorID(w http.ResponseWriter, r *http.Request) {
-//}

@@ -85,7 +85,7 @@
 - [x] Define endpoints for /api/servicelogs. Probably POST, GET, PUT.
 - [x] Write a migration for the service_logs table to accommodate public ids in tables users, visitors, desks.
 - [x] Define a GET /api/servicelogs/{visitor_id}/status endpoint. This is meant for a visitor to check their own status ideally. > see next todo
-- [ ] Instead of the todo above, how about query parameters under GET /api/servicelogs?user=user_public_id&visitor=visitor_public_id&desk=desk_public_id ? 
+- [x] Instead of the todo above, how about query parameters under GET /api/servicelogs?user=user_public_id&visitor=visitor_public_id&desk=desk_public_id ? 
 - [ ] Define a /api/queue endpoint which takes GET requests and is meant for a screen to display all WAITING / CALLED / SERVING visitors.
 - [ ] Write handlers for all of the aforementioned endpoints.
 - [x] We have the same authentication issue for visitors that we have for GET /api/visitors/{visitor_id}. Basically the question is: if a third party that isn't the visitor themselves knows the URI to the visitor status page and can get information from the service log, is that a problem? Does it matter if someone else can see visitors being called? 

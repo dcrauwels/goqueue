@@ -178,31 +178,26 @@ func (cfg *ApiConfig) HandlerGetVisitors(w http.ResponseWriter, r *http.Request)
 	// 2.1 status as string to status as int32
 	status, err := strutils.QueryParameterToNullInt(q.Get("status"))
 	if err != nil {
-		jsonutils.WriteError(w, http.StatusBadRequest, err, "query parameter 'stauts' takes integers")
+		jsonutils.WriteError(w, http.StatusBadRequest, err, "query parameter 'status' takes integers")
 		return
 	}
 	params.Status = status
 
 	// 2.3 start and end dates
-	var t time.Time
-	if startStr := q.Get("start_date"); startStr != "" {
-		t, err = time.Parse("2006-01-02", startStr)
-		if err != nil {
-			jsonutils.WriteError(w, http.StatusBadRequest, err, "query parameter 'start_date' takes ISO 8601 format (YYYY-MM-DD)")
-			return
-		} else {
-			params.StartDate = sql.NullTime{Time: t, Valid: true}
-		}
+	var t sql.NullTime
+	t, err = strutils.QueryParameterToNullTime(q.Get("start_date"))
+	if err != nil {
+		jsonutils.WriteError(w, http.StatusBadRequest, err, "query parameter 'start_date' takes ISO 8601 format (YYYY-MM-DD)")
+		return
 	}
-	if endStr := q.Get("end_date"); endStr != "" {
-		t, err = time.Parse("2006-01-02", endStr)
-		if err != nil {
-			jsonutils.WriteError(w, http.StatusBadRequest, err, "query parameter 'end_date' takes ISO 8601 format (YYYY-MM-DD)")
-			return
-		} else {
-			params.EndDate = sql.NullTime{Time: t, Valid: true}
-		}
+	params.StartDate = t
+
+	t, err = strutils.QueryParameterToNullTime(q.Get("end_date"))
+	if err != nil {
+		jsonutils.WriteError(w, http.StatusBadRequest, err, "query parameter 'end_date' takes ISO 8601 format (YYYY-MM-DD)")
+		return
 	}
+	params.EndDate = t
 
 	// 3. query database
 	visitors, err = cfg.DB.ListVisitors(r.Context(), params)
