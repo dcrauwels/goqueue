@@ -12,17 +12,29 @@
 - [x] api.HandlerGetPurposesByID is NYI (in api/handler_purposes.go)
 - [x] Think about whether api.HandlerGetUsersByID needs authentication or not. Leaning towards yes. Also depends on how I will implement a visitor seeing they've been called. > currently implemented a check for user auth
 - [x] Stop rotating refresh tokens so much, instead only rotate it when you use it for its purpose of generating an access token? Or is the current approach fine?
-- [ ] What is auth.VisitorsByID supposed to do? (in auth/auth.go)
+- [x] What is auth.VisitorsByID supposed to do? (in auth/auth.go) > it's gone
 - [x] All of my http.Redirects are wrong. They more or less all point to "/api/login" which is wrong. It should be an HTML login page like /login. (I think.)
 - [x] Currently there are no checks for user.IsActive. This needs to either go in AuthUserMiddleware or in all of the individual user authentication checks in handlers. The bottom line is: do we want to allow a user to present an access / refresh token for an inactive account and get that ID added to their context? > No, we don't, so it should be blocked at the AuthUserMiddleware level, where we clear the cookie, throw a 401 Unauthorized error, clear cookies and send them to login. (Also see previous todo.)
 - [ ] What range of statuses will be allowed? There are multiple NYI's for this, mostly in auth_visitors.go.
 - [ ] Double-check *all* authentication checks in handlers if user.IsActive is taken into account. Compare to how it's done in HandlerPostDesks in handler_desks.go
 
 ## Statuses
-- [ ] Think about whether statuses should be hardcoded or user-defined (like purposes)
-- [ ] Define statuses, currently implemented as integers, so a map is needed for integers > meaning
+- [x] Think about whether statuses should be hardcoded or user-defined (like purposes) > hardcoded
+- [x] Define statuses, currently implemented as integers, so a map is needed for integers to meaning > this is the set of VisitorStatus consts at the top of handler_visitors.go
+- [x] Write a query for a global status reset (all visitors with non-completed status are set to completed)
+- [x] Write a query for global service log deactivation (all service logs are set to is_active = false)
 - [ ] Implement statuses properly, in the following parts:
-- [ ] 1. visitors queries
+- [ ] 1. visitors.sql (so queries)
+
+
+
+## Program flow
+- [ ] Write out every step of use, starting with user login, ending with workday end (probably time-based, e.g. midnight but can use a env var for that)
+- [x] Add reset time env var
+- [ ] load reset time env var into apiConfig variable
+- [ ] Think about how to implement reset time
+
+
 
 ## GET /api/visitors 
 ### query parameters
@@ -86,8 +98,8 @@
 - [x] Write a migration for the service_logs table to accommodate public ids in tables users, visitors, desks.
 - [x] Define a GET /api/servicelogs/{visitor_id}/status endpoint. This is meant for a visitor to check their own status ideally. > see next todo
 - [x] Instead of the todo above, how about query parameters under GET /api/servicelogs?user=user_public_id&visitor=visitor_public_id&desk=desk_public_id ? 
-- [ ] Define a /api/queue endpoint which takes GET requests and is meant for a screen to display all WAITING / CALLED / SERVING visitors.
-- [ ] Write handlers for all of the aforementioned endpoints.
+- [x] Define a /api/queue endpoint which takes GET requests and is meant for a screen to display all WAITING / CALLED / SERVING visitors.
+- [x] Write handlers for all of the aforementioned endpoints.
 - [x] We have the same authentication issue for visitors that we have for GET /api/visitors/{visitor_id}. Basically the question is: if a third party that isn't the visitor themselves knows the URI to the visitor status page and can get information from the service log, is that a problem? Does it matter if someone else can see visitors being called? 
 - [x] Why is it necessary again to have both a visitor and a service log implementation? Given that a visitor only goes in one direction: from waiting, to serving, to served, what does the log add?
 

@@ -138,7 +138,17 @@ Endpoint for handling visitors, who are models of actual human visitors to the p
 - `waiting_since`: timestamp, not nullable. Describes the moment in time since when the visitor has been waiting. For purposes of determining which visitor is called (whether FIFO or LIFO).
 - `name`: string, nullable. Describes the name of the visitor waiting in line. Note that this is currently nullable while the corresponding field in the POST request is not.
 - `purpose_id`: UUID, not nullable. Identifies the visitor chosen purpose in the purpose database.
-- `status`: int (32 bit), not nullable. Describes the status of the visitor: waiting, being helped, helped, cancelled by visitor, cancelled by user. NYI.
+- `status`: int (32 bit), not nullable. Describes the status of the visitor: waiting, being helped, helped, cancelled by visitor, cancelled by user.
+
+Statuses are implemented as 32bit integers. Conceptually, the statuses are defined as follows:
+
+0. cancelled by user
+1. waiting
+2. called
+3. being helped
+4. helped
+5. no-show
+
 
 ## POST /api/visitors
 
@@ -188,6 +198,12 @@ The generic /api/visitors endpoint takes query parameters for GET requests. The 
 
 Returns either a set of visitors or a single visitor, depending on whether the request is sent to the generic or the specific endpoint. Parameters are as in the endpoint wide response parameters described abovess.
 
+# /api/queue
+
+## GET /api/queue
+
+Shorthand for querying for visitors over a specific range of statuses. Intended for a customer facing display. Returns a list of visitors with the same response parameters as those listed under /api/visitors. User authentication is required to access this endpoint.
+
 # /api/desks
 Endpoint for handling desks, which are at this point functionally just labels to call visitors from.
 
@@ -226,3 +242,4 @@ Uses the general response parameters as listed under the `/api/desks` heading, a
 **Query parameters for generic endpoint:**
 
 - `is_active`: boolean. Describes whether a desk is in use or not.
+

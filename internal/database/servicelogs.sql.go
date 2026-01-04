@@ -247,6 +247,46 @@ func (q *Queries) ListServiceLogs(ctx context.Context, arg ListServiceLogsParams
 	return items, nil
 }
 
+const setAllServiceLogsInactive = `-- name: SetAllServiceLogsInactive :many
+UPDATE service_logs
+SET is_active = false, updated_at = NOW()
+WHERE is_active = true
+RETURNING id, created_at, updated_at, called_at, is_active, public_id, user_public_id, visitor_public_id, desk_public_id
+`
+
+func (q *Queries) SetAllServiceLogsInactive(ctx context.Context) ([]ServiceLog, error) {
+	rows, err := q.db.QueryContext(ctx, setAllServiceLogsInactive)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ServiceLog
+	for rows.Next() {
+		var i ServiceLog
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.CalledAt,
+			&i.IsActive,
+			&i.PublicID,
+			&i.UserPublicID,
+			&i.VisitorPublicID,
+			&i.DeskPublicID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const setServiceLogsByPublicID = `-- name: SetServiceLogsByPublicID :one
 UPDATE service_logs
 SET visitor_public_id = $2, user_public_id = $3, desk_public_id = $4, is_active = $5, updated_at = NOW()
@@ -270,6 +310,35 @@ func (q *Queries) SetServiceLogsByPublicID(ctx context.Context, arg SetServiceLo
 		arg.DeskPublicID,
 		arg.IsActive,
 	)
+	var i ServiceLog
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.CalledAt,
+		&i.IsActive,
+		&i.PublicID,
+		&i.UserPublicID,
+		&i.VisitorPublicID,
+		&i.DeskPublicID,
+	)
+	return i, err
+}
+
+const setServiceLogsIsActiveByPublicID = `-- name: SetServiceLogsIsActiveByPublicID :one
+UPDATE service_logs
+SET is_active = $2, updated_at = NOW()
+WHERE public_id = $1
+RETURNING id, created_at, updated_at, called_at, is_active, public_id, user_public_id, visitor_public_id, desk_public_id
+`
+
+type SetServiceLogsIsActiveByPublicIDParams struct {
+	PublicID string
+	IsActive bool
+}
+
+func (q *Queries) SetServiceLogsIsActiveByPublicID(ctx context.Context, arg SetServiceLogsIsActiveByPublicIDParams) (ServiceLog, error) {
+	row := q.db.QueryRowContext(ctx, setServiceLogsIsActiveByPublicID, arg.PublicID, arg.IsActive)
 	var i ServiceLog
 	err := row.Scan(
 		&i.ID,

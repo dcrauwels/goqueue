@@ -12,6 +12,30 @@ import (
 	"github.com/google/uuid"
 )
 
+const callVisitorByPublicID = `-- name: CallVisitorByPublicID :one
+UPDATE visitors
+SET STATUS = 2, updated_at = NOW()
+WHERE public_id = $1
+RETURNING id, created_at, updated_at, waiting_since, name, status, daily_ticket_number, public_id, purpose_public_id
+`
+
+func (q *Queries) CallVisitorByPublicID(ctx context.Context, publicID string) (Visitor, error) {
+	row := q.db.QueryRowContext(ctx, callVisitorByPublicID, publicID)
+	var i Visitor
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.WaitingSince,
+		&i.Name,
+		&i.Status,
+		&i.DailyTicketNumber,
+		&i.PublicID,
+		&i.PurposePublicID,
+	)
+	return i, err
+}
+
 const createVisitor = `-- name: CreateVisitor :one
 INSERT INTO visitors (id, public_id, created_at, updated_at, waiting_since, name, purpose_public_id, status, daily_ticket_number)
 VALUES (
@@ -55,6 +79,69 @@ func (q *Queries) CreateVisitor(ctx context.Context, arg CreateVisitorParams) (V
 		&i.PurposePublicID,
 	)
 	return i, err
+}
+
+const getNextWaitingVisitor = `-- name: GetNextWaitingVisitor :one
+SELECT id, created_at, updated_at, waiting_since, name, status, daily_ticket_number, public_id, purpose_public_id FROM visitors
+WHERE status = 1
+ORDER BY waiting_since ASC
+LIMIT 1
+FOR UPDATE SKIP LOCKED
+`
+
+func (q *Queries) GetNextWaitingVisitor(ctx context.Context) (Visitor, error) {
+	row := q.db.QueryRowContext(ctx, getNextWaitingVisitor)
+	var i Visitor
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.WaitingSince,
+		&i.Name,
+		&i.Status,
+		&i.DailyTicketNumber,
+		&i.PublicID,
+		&i.PurposePublicID,
+	)
+	return i, err
+}
+
+const getQueue = `-- name: GetQueue :many
+SELECT id, created_at, updated_at, waiting_since, name, status, daily_ticket_number, public_id, purpose_public_id FROM visitors
+WHERE status IN (1,2,3)
+`
+
+func (q *Queries) GetQueue(ctx context.Context) ([]Visitor, error) {
+	rows, err := q.db.QueryContext(ctx, getQueue)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Visitor
+	for rows.Next() {
+		var i Visitor
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.WaitingSince,
+			&i.Name,
+			&i.Status,
+			&i.DailyTicketNumber,
+			&i.PublicID,
+			&i.PurposePublicID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getVisitorByID = `-- name: GetVisitorByID :one
@@ -392,6 +479,46 @@ func (q *Queries) ListVisitors(ctx context.Context, arg ListVisitorsParams) ([]V
 	return items, nil
 }
 
+const setAllVisitorsStatusCompleted = `-- name: SetAllVisitorsStatusCompleted :many
+UPDATE visitors
+SET STATUS = 4, updated_at = NOW()
+WHERE status IN (1, 2, 3) 
+RETURNING id, created_at, updated_at, waiting_since, name, status, daily_ticket_number, public_id, purpose_public_id
+`
+
+func (q *Queries) SetAllVisitorsStatusCompleted(ctx context.Context) ([]Visitor, error) {
+	rows, err := q.db.QueryContext(ctx, setAllVisitorsStatusCompleted)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Visitor
+	for rows.Next() {
+		var i Visitor
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.WaitingSince,
+			&i.Name,
+			&i.Status,
+			&i.DailyTicketNumber,
+			&i.PublicID,
+			&i.PurposePublicID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const setVisitorByPublicID = `-- name: SetVisitorByPublicID :one
 UPDATE visitors
 SET name = $2, purpose_public_id = $3, status = $4, updated_at = NOW() -- status
@@ -428,20 +555,20 @@ func (q *Queries) SetVisitorByPublicID(ctx context.Context, arg SetVisitorByPubl
 	return i, err
 }
 
-const setVisitorStatusByID = `-- name: SetVisitorStatusByID :one
+const setVisitorStatusByPublicID = `-- name: SetVisitorStatusByPublicID :one
 UPDATE visitors
 SET status = $2, updated_at = NOW() --status 
-WHERE id = $1
+WHERE public_id = $1
 RETURNING id, created_at, updated_at, waiting_since, name, status, daily_ticket_number, public_id, purpose_public_id
 `
 
-type SetVisitorStatusByIDParams struct {
-	ID     uuid.UUID
-	Status int32
+type SetVisitorStatusByPublicIDParams struct {
+	PublicID string
+	Status   int32
 }
 
-func (q *Queries) SetVisitorStatusByID(ctx context.Context, arg SetVisitorStatusByIDParams) (Visitor, error) {
-	row := q.db.QueryRowContext(ctx, setVisitorStatusByID, arg.ID, arg.Status)
+func (q *Queries) SetVisitorStatusByPublicID(ctx context.Context, arg SetVisitorStatusByPublicIDParams) (Visitor, error) {
+	row := q.db.QueryRowContext(ctx, setVisitorStatusByPublicID, arg.PublicID, arg.Status)
 	var i Visitor
 	err := row.Scan(
 		&i.ID,

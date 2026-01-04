@@ -55,10 +55,10 @@ SELECT * FROM visitors
 WHERE waiting_since::date = CURRENT_DATE
 ORDER BY waiting_since ASC;
 
--- name: SetVisitorStatusByID :one
+-- name: SetVisitorStatusByPublicID :one
 UPDATE visitors
 SET status = $2, updated_at = NOW() --status 
-WHERE id = $1
+WHERE public_id = $1
 RETURNING *;
 
 -- name: ListVisitors :many
@@ -68,3 +68,27 @@ WHERE (sqlc.narg('status')::int IS NULL OR status = sqlc.narg('status'))
     AND (sqlc.narg('start_date')::timestamp IS NULL OR created_at >= sqlc.narg('start_date'))
     AND (sqlc.narg('end_date')::timestamp IS NULL OR created_at < sqlc.narg('end_date'))
 ORDER BY waiting_since ASC;
+
+-- name: GetQueue :many
+SELECT * FROM visitors
+WHERE status IN (1,2,3);
+
+-- name: GetNextWaitingVisitor :one
+SELECT * FROM visitors
+WHERE status = 1
+ORDER BY waiting_since ASC
+LIMIT 1
+FOR UPDATE SKIP LOCKED;
+
+-- name: CallVisitorByPublicID :one
+UPDATE visitors
+SET STATUS = 2, updated_at = NOW()
+WHERE public_id = $1
+RETURNING *;
+
+-- name: SetAllVisitorsStatusCompleted :many
+UPDATE visitors
+SET STATUS = 4, updated_at = NOW()
+WHERE status IN (1, 2, 3) 
+RETURNING *;
+

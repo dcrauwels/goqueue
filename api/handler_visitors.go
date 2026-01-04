@@ -50,6 +50,18 @@ func (vrp *VisitorsResponseParameters) Populate(v database.Visitor) {
 	vrp.DailyTicketNumber = v.DailyTicketNumber
 }
 
+type VisitorStatus int32
+
+const (
+	StatusCancelled     VisitorStatus = iota // 0
+	StatusWaiting                            // 1
+	StatusCalled                             // 2
+	StatusInService                          // 3
+	StatusCompleted                          // 4
+	StatusNoShow                             // 5
+	StatusAutoCompleted                      // 6
+)
+
 // POST /api/visitors no auth required
 func (cfg *ApiConfig) HandlerPostVisitors(w http.ResponseWriter, r *http.Request) { // POST /api/visitors
 	/* function for sending a POST request to CREATE a single visitor from scratch
@@ -119,9 +131,12 @@ func (cfg *ApiConfig) HandlerPutVisitorsByPublicID(w http.ResponseWriter, r *htt
 	}
 
 	// 2. get user authentication from context
-	_, err = auth.UserFromContext(w, r, cfg.DB) // I don't need information about the user itself, just whether a user ID is present in the request context.
+	accessingUser, err := auth.UserFromContext(w, r, cfg.DB) // I don't need information about the user itself, just whether a user ID is present in the request context.
 	if err != nil {
 		jsonutils.WriteError(w, http.StatusUnauthorized, err, "user authentication required to access PUT /api/visitors")
+		return
+	} else if !accessingUser.IsActive {
+		jsonutils.WriteError(w, http.StatusForbidden, auth.ErrUserInactive, "accessing user account is inactive")
 		return
 	}
 
@@ -162,12 +177,14 @@ func (cfg *ApiConfig) HandlerPutVisitorsByPublicID(w http.ResponseWriter, r *htt
 func (cfg *ApiConfig) HandlerGetVisitors(w http.ResponseWriter, r *http.Request) { // GET /api/visitors
 	// only accessible to logged in users
 	// 1. get user authentication from request context
-	_, err := auth.UserFromContext(w, r, cfg.DB) // not interested in actual information about the user
+	accessingUser, err := auth.UserFromContext(w, r, cfg.DB) // not interested in actual information about the user
 	if err != nil {
 		jsonutils.WriteError(w, http.StatusUnauthorized, err, "user authentication required to access GET /api/visitors")
 		return
+	} else if !accessingUser.IsActive {
+		jsonutils.WriteError(w, http.StatusForbidden, auth.ErrUserInactive, "accessing user account is inactive")
+		return
 	}
-	var visitors []database.Visitor
 
 	// 2. check for query parameters (purpose, status)
 	q := r.URL.Query()
@@ -200,7 +217,7 @@ func (cfg *ApiConfig) HandlerGetVisitors(w http.ResponseWriter, r *http.Request)
 	params.EndDate = t
 
 	// 3. query database
-	visitors, err = cfg.DB.ListVisitors(r.Context(), params)
+	visitors, err := cfg.DB.ListVisitors(r.Context(), params)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			jsonutils.WriteError(w, http.StatusNotFound, err, "no visitors found under specified query parameters")
@@ -213,8 +230,8 @@ func (cfg *ApiConfig) HandlerGetVisitors(w http.ResponseWriter, r *http.Request)
 
 	// 4. write response
 	response := make([]VisitorsResponseParameters, len(visitors))
-	for i, u := range visitors {
-		response[i].Populate(u)
+	for i, v := range visitors {
+		response[i].Populate(v)
 	}
 	jsonutils.WriteJSON(w, http.StatusOK, response)
 }
@@ -242,4 +259,120 @@ func (cfg *ApiConfig) HandlerGetVisitorsByPublicID(w http.ResponseWriter, r *htt
 	response.Populate(visitor)
 	jsonutils.WriteJSON(w, http.StatusOK, response)
 
+}
+
+func (cfg *ApiConfig) HandlerGetQueue(w http.ResponseWriter, r *http.Request) { // GET /api/visitors/queue
+	// 1. auth
+	accessingUser, err := auth.UserFromContext(w, r, cfg.DB)
+	if err != nil {
+		jsonutils.WriteError(w, http.StatusUnauthorized, err, "user authentication is required for this endpoint (GET /api/queue)")
+		return
+	} else if !accessingUser.IsActive {
+		jsonutils.WriteError(w, http.StatusForbidden, auth.ErrUserInactive, "accessing user account is inactive")
+		return
+	}
+
+	// 2. run query
+	visitors, err := cfg.DB.GetQueue(r.Context())
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			jsonutils.WriteError(w, http.StatusNotFound, err, "no rows found")
+		} else {
+			jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying server (GetQueue in HandlerGetQueue)")
+		}
+		return
+	}
+
+	// 3. write response
+	response := make([]VisitorsResponseParameters, len(visitors))
+	for i, v := range visitors {
+		response[i].Populate(v)
+	}
+	jsonutils.WriteJSON(w, http.StatusOK, response)
+}
+
+func (cfg *ApiConfig) HandlerCallNextVisitor(w http.ResponseWriter, r *http.Request) { // POST /api/visitors/call-next
+	// 1. check auth
+	accessingUser, err := auth.UserFromContext(w, r, cfg.DB)
+	if err != nil {
+		jsonutils.WriteError(w, http.StatusUnauthorized, err, "user authentication is required for this endpoint")
+		return
+	} else if !accessingUser.IsActive {
+		jsonutils.WriteError(w, http.StatusForbidden, auth.ErrUserInactive, "accessing user account is inactive")
+		return
+	}
+
+	// 2. check for active visitors on accessing user
+	// 2.1 query DB for servicelogs by user public ID
+	serviceLogs, err := cfg.DB.GetActiveServiceLogsByUserID(r.Context(), accessingUser.PublicID)
+	if err != nil {
+		if !errors.Is(err, sql.ErrNoRows) { // getting errnorows is expected in case no active service logs are available for this user
+			jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (GetActiveServiceLogsByUserID in HandlerCallNextVisitor)")
+			return
+		}
+	}
+
+	// 2.2 deactivate servicelogs and set visitors to StatusCompleted
+	if len(serviceLogs) != 0 {
+		for _, sl := range serviceLogs {
+			// 2.2.1 set visitor status
+			oldVisitorParams := database.SetVisitorStatusByPublicIDParams{
+				PublicID: sl.VisitorPublicID,
+				Status:   int32(StatusCompleted),
+			}
+			_, err := cfg.DB.SetVisitorStatusByPublicID(r.Context(), oldVisitorParams) // updated old visitor is not returned
+			if err != nil {
+				if errors.Is(err, sql.ErrNoRows) {
+					jsonutils.WriteError(w, http.StatusNotFound, err, "visitor public ID in active service log for accessing user does not match any existing visitors")
+					return
+				} else {
+					jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (SetVisitorStatusByPublicID in HandlerCallNextVisitor)")
+					return
+				}
+			}
+
+			// 2.2.2 set servicelog inactive
+			oldServiceLogParams := database.SetServiceLogsIsActiveByPublicIDParams{
+				PublicID: sl.PublicID,
+				IsActive: false,
+			}
+			_, err = cfg.DB.SetServiceLogsIsActiveByPublicID(r.Context(), oldServiceLogParams) // updated old servicelog is not returned
+			if err != nil {                                                                    // no need to check for sql.ErrNoRows -- this would be extremely bizarre, as this entire loop runs over the very servicelog we are querying here
+				jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (SetServiceLogsIsActiveByPublicID in HandlerCallNextVisitor)")
+				return
+			}
+
+		}
+	}
+
+	// 3. get next waiting visitor
+	calledVisitor, err := cfg.DB.GetNextWaitingVisitor(r.Context())
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			jsonutils.WriteError(w, http.StatusNotFound, err, "no visitors in queue")
+			return
+		} else {
+			jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (CallNextVisitor in HandlerCallNextVisitor)")
+			return
+		}
+	}
+
+	// 4. update waiting visitor status and insert servicelog
+	// 4.1 update visitor status
+	newVisitorParams := database.SetVisitorStatusByPublicIDParams{
+		PublicID: calledVisitor.PublicID,
+		Status:   int32(StatusCalled),
+	}
+	updatedVisitor, err := cfg.DB.SetVisitorStatusByPublicID(r.Context(), newVisitorParams)
+	if err != nil { // no need to check for sql.ErrNoRows -- that would have already been thrown by GetNextWaitingVisitor()
+		jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (SetVisitorStatusByPublicID in HandlerCallNextVisitor)")
+		return
+	}
+
+	// 4.2 insert servicelog
+
+	// 3. write response
+	response := VisitorsResponseParameters{}
+	response.Populate(updatedVisitor)
+	jsonutils.WriteJSON(w, http.StatusOK, response)
 }

@@ -11,6 +11,8 @@ import (
 	"unicode"
 )
 
+var ErrNoValueFound error = errors.New("no environment value found for this key")
+
 func ValidateEmail(email string) error {
 	_, err := mail.ParseAddress(email)
 	return err
@@ -38,11 +40,8 @@ func InitNullString(s string) sql.NullString {
 }
 
 func GetIntegerEnvironmentVariable(s string) (int, error) {
-	/* Retrieves an environment value using os.LookupEnv, then converts it to an integer. Uses os.LookupEnv and */
+	/* Retrieves an environment value using os.LookupEnv, then converts it to an integer. Uses os.LookupEnv and strconv.Atoi */
 	var r int
-	ErrNoValueFound := errors.New("no environment value found for this key")
-	ErrValueNotNumeric := errors.New("the environment for this key cannot be converted to an integer")
-	ErrValueNegative := errors.New("negative or null environment values are not allowed")
 
 	envVar, ok := os.LookupEnv(s)
 	if !ok { // this means there was no value found for keystring s
@@ -50,13 +49,23 @@ func GetIntegerEnvironmentVariable(s string) (int, error) {
 	}
 
 	r, err := strconv.Atoi(envVar)
-	if err != nil { // this means the value passed into Atoi cannot be converted into an integer - i.e. it contains non-numeric characters
-		return r, ErrValueNotNumeric
-	} else if r <= 0 {
-		return r, ErrValueNegative
+	if r <= 0 {
+		return r, errors.New("negative integers are not allowed here")
 	}
 
-	return r, nil
+	return r, err
+}
+
+func GetTimestampEnvironmentVariable(s string) (time.Time, error) {
+	/* Retrieves an environment variable using os.LookupEnv, then converts it to an integer. Uses */
+	var r time.Time
+
+	envVar, ok := os.LookupEnv(s)
+	if !ok {
+		return r, ErrNoValueFound
+	}
+
+	return time.Parse("15:04", envVar)
 }
 
 func GetPublicIDFromPathValue(path string, publicIDLength int, r *http.Request) (string, error) {

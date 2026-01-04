@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"errors"
 	"log"
 	"net/http"
 	"os"
@@ -50,6 +51,11 @@ func main() {
 		log.Printf("public ID length not between 2 and 255: %v", err)
 		panic(err)
 	}
+	resetTime, err := strutils.GetTimestampEnvironmentVariable("RESETTIME")
+	if err != nil && !errors.Is(err, strutils.ErrNoValueFound) {
+		log.Printf("Environment variable RESETTIME could not be parsed: %v", err)
+		panic(err)
+	}
 
 	apiCfg := api.ApiConfig{
 		DB:                   dbQueries,
@@ -59,6 +65,7 @@ func main() {
 		RefreshTokenDuration: refreshTokenDuration,
 		PublicIDGenerator:    pidGenerator,
 		PublicIDLength:       publicIDLength,
+		ResetTime:            resetTime,
 	}
 
 	// servemux
@@ -85,7 +92,9 @@ func main() {
 	mux.HandleFunc("POST /api/visitors", apiCfg.HandlerPostVisitors)                                                                      // ok
 	mux.Handle("PUT /api/visitors/{visitor_public_id}", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerPutVisitorsByPublicID))) // ok
 	mux.Handle("GET /api/visitors", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerGetVisitors)))                               // ok
-	mux.HandleFunc("GET /api/visitors/{visitor_public_id}", apiCfg.HandlerGetVisitorsByPublicID)                                          // ok
+	mux.HandleFunc("GET /api/visitors/{visitor_public_id}", apiCfg.HandlerGetVisitorsByPublicID)                                          //ok
+	mux.Handle("GET /api/visitors/queue", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerGetQueue)))                            // ok
+	mux.Handle("POST /api/visitors/call-next", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerCallNextVisitor)))                // ok
 	//handler_desks.go
 	mux.Handle("POST /api/desks", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerPostDesks)))                          // ok
 	mux.Handle("PUT /api/desks/{desk_public_id}", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerPutDesksByPublicID))) // ok
