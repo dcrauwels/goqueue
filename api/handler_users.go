@@ -127,8 +127,8 @@ func (cfg *ApiConfig) HandlerPostUsers(w http.ResponseWriter, r *http.Request) {
 
 }
 
-// PUT /api/users
-func (cfg *ApiConfig) HandlerPutUsers(w http.ResponseWriter, r *http.Request) { // PUT /api/users
+// PUT /api/me
+func (cfg *ApiConfig) HandlerPutMe(w http.ResponseWriter, r *http.Request) { // PUT /api/me
 	/*
 		Function to change own details for user. Only things a user can change about himself are email, password and fullname
 		Currently the way this is set up is that a user changes himself. But perhaps it would be better to only keep the PUT /api/users/{user_public_id} setup and
@@ -179,6 +179,36 @@ func (cfg *ApiConfig) HandlerPutUsers(w http.ResponseWriter, r *http.Request) { 
 
 }
 
+// PUT /api/me/desk
+func (cfg *ApiConfig) HandlerPutMeToDesk(w http.ResponseWriter, r *http.Request) {
+	// function to set the currently logged in used to a desk specified in request
+	// 1. check accessing user
+	accessingUser, err := auth.UserFromContext(w, r, cfg.DB)
+	if err != nil {
+		jsonutils.WriteError(w, http.StatusUnauthorized, err, "user authentication is required for this endpoint")
+		return
+	} else if !accessingUser.IsActive {
+		jsonutils.WriteError(w, http.StatusForbidden, err, "accessing user account is inactive")
+		return
+	}
+
+	// 2. retrieve request data
+	type UsersPUTMeToDeskParameters struct {
+		DeskPublicID string `json:"desk_public_id"`
+	}
+	request := UsersPUTMeToDeskParameters{}
+	decoder := json.NewDecoder(r.Body)
+	err = decoder.Decode(&request)
+	if err != nil {
+		jsonutils.WriteError(w, http.StatusBadRequest, err, "request has incorrect JSON structure (to PUT /api/me/desk)")
+		return
+	}
+
+	// 3. send query
+
+	// 4. write response
+}
+
 // PUT /api/users/{user_public_id}
 func (cfg *ApiConfig) HandlerPutUsersByID(w http.ResponseWriter, r *http.Request) {
 	// function to UPDATE specific user by public ID
@@ -188,6 +218,9 @@ func (cfg *ApiConfig) HandlerPutUsersByID(w http.ResponseWriter, r *http.Request
 	accessingUser, err := auth.UserFromContext(w, r, cfg.DB)
 	if err != nil {
 		jsonutils.WriteError(w, http.StatusUnauthorized, err, "user authentication required to access PUT /api/users")
+		return
+	} else if !accessingUser.IsActive {
+		jsonutils.WriteError(w, http.StatusForbidden, err, "accessing user account is inactive")
 		return
 	}
 

@@ -17,6 +17,8 @@
 - [x] Currently there are no checks for user.IsActive. This needs to either go in AuthUserMiddleware or in all of the individual user authentication checks in handlers. The bottom line is: do we want to allow a user to present an access / refresh token for an inactive account and get that ID added to their context? > No, we don't, so it should be blocked at the AuthUserMiddleware level, where we clear the cookie, throw a 401 Unauthorized error, clear cookies and send them to login. (Also see previous todo.)
 - [ ] What range of statuses will be allowed? There are multiple NYI's for this, mostly in auth_visitors.go.
 - [ ] Double-check *all* authentication checks in handlers if user.IsActive is taken into account. Compare to how it's done in HandlerPostDesks in handler_desks.go
+- [ ] HandlerPutUsersByID uses an incorrect struct for decoding the request into.
+- [ ] Need to write a migration to change the desk_id fk column in users to desk_public_id.
 
 ## Statuses
 - [x] Think about whether statuses should be hardcoded or user-defined (like purposes) > hardcoded
@@ -30,11 +32,14 @@
 
 ## Program flow
 - [ ] Write out every step of use, starting with user login, ending with workday end (probably time-based, e.g. midnight but can use a env var for that)
+- [ ] user login: send POST request to /api/login. Existing user cookies are checked: if same user is already logged in, point to /api/refresh. If different user is logged in, point to /api/logout.
+- [ ] user desk assign: send PUT request ot /api/me/desks
+- [ ] write handler for PUT /api/me/desks
+- [ ] write handler for PUT /api/users/{user_public_id}/desks
+- [ ] write handler for GET /api/me
 - [x] Add reset time env var
-- [ ] load reset time env var into apiConfig variable
+- [x] load reset time env var into apiConfig variable
 - [ ] Think about how to implement reset time
-
-
 
 ## GET /api/visitors 
 ### query parameters
