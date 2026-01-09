@@ -205,8 +205,19 @@ func (cfg *ApiConfig) HandlerPutMeToDesk(w http.ResponseWriter, r *http.Request)
 	}
 
 	// 3. send query
+	params := database.SetUserDeskByPublicIDParams{
+		PublicID:     accessingUser.PublicID,
+		DeskPublicID: request.DeskPublicID,
+	}
+	me, err := cfg.DB.SetUserDeskByPublicID(r.Context(), params)
+	if err != nil { // no need to separate out sql.ErrNoRows: if this occurs something strange indeed has happened and it's fine to respond 500
+		jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (SetUserDeskByPublicID in HandlerPutMeToDesk)")
+		return
+	}
 
 	// 4. write response
+	response := userResponseParameters{}
+	response.populate(me, me.)
 }
 
 // PUT /api/users/{user_public_id}

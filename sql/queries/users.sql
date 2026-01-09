@@ -34,6 +34,12 @@ SET email = $2, full_name = $3, is_admin = $4, is_active = $5, updated_at = NOW(
 WHERE public_id = $1
 returning *;
 
+-- name: SetUserDeskByPublicID :one
+UPDATE users
+SET desk_public_id = $2, updated_at = NOW()
+WHERE public_id = $1
+RETURNING *;
+
 -- name: SetUserEmailPasswordByID :one
 UPDATE users
 SET email = $2, hashed_password = $3, updated_at = NOW()
@@ -62,3 +68,4 @@ RETURNING *;
 DELETE FROM users
 WHERE id = $1
 RETURNING *;
+

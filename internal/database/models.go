@@ -63,9 +63,9 @@ type User struct {
 	HashedPassword string
 	IsAdmin        bool
 	IsActive       bool
-	DeskID         uuid.NullUUID
 	FullName       string
 	PublicID       string
+	DeskPublicID   sql.NullString
 }
 
 type Visitor struct {
