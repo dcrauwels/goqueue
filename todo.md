@@ -20,6 +20,10 @@
 - [ ] HandlerPutUsersByID uses an incorrect struct for decoding the request into.
 - [ ] Need to write a migration to change the desk_id fk column in users to desk_public_id.
 
+## Deadlines
+- [ ] Think about which requests should timeout or have some sort of deadline
+- [ ] "implement"
+
 ## Statuses
 - [x] Think about whether statuses should be hardcoded or user-defined (like purposes) > hardcoded
 - [x] Define statuses, currently implemented as integers, so a map is needed for integers to meaning > this is the set of VisitorStatus consts at the top of handler_visitors.go
@@ -34,9 +38,17 @@
 - [ ] Write out every step of use, starting with user login, ending with workday end (probably time-based, e.g. midnight but can use a env var for that)
 - [ ] user login: send POST request to /api/login. Existing user cookies are checked: if same user is already logged in, point to /api/refresh. If different user is logged in, point to /api/logout.
 - [ ] user desk assign: send PUT request ot /api/me/desks
-- [ ] write handler for PUT /api/me/desks
-- [ ] write handler for PUT /api/users/{user_public_id}/desks
-- [ ] write handler for GET /api/me
+- [x] write handler for PUT /api/me/desks
+- [x] write handler for PUT /api/users/{user_public_id}/desks
+- [x] write handler for GET /api/me
+- [ ] visitor enters building and sends POST request to /api/visitors
+- [ ] user sees visitor show up through periodic GET /api/visitors/queue (or maybe there is a way to trigger this?)
+- [ ] user calls visitor by sending POST /api/visitors/call-next
+- [ ] user should also be able to send PUT /api/visitors/{visitor_public_id}/status and change their status that way
+- [ ] write associated endpoint
+- [ ] visitor sees what desk they go to from GET /api/visitors/{visitor_public_id} and GET /api/visitors/screen
+- [ ] user sees the visitor at their desk through GET /api/servicelogs/me
+- [ ] write associated handler: HandlerGetMyServicelogs
 - [x] Add reset time env var
 - [x] load reset time env var into apiConfig variable
 - [ ] Think about how to implement reset time
@@ -116,5 +128,6 @@
 - [ ] Related to the previous query: say a malicious actor gains access to an admin account. Does that grant them access to all user accounts through GET /api/users and then  
 - [ ] There is currently a privacy problem where visitors can be queried historically. The identifying information is really in their name more than anything else. So that needs to be periodically removed from the visitors table, as it's not relevant for statistical purposes either.
 - [ ] The scenario where a non-admin user accesses their own user_id under POST /api/revoke should redirect to /api/logout, not just throw a bad request error.
+- [ ] Deadlines for requests / timeouts. Very big undertaking.
 
 # Other

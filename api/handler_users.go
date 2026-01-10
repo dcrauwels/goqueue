@@ -204,10 +204,15 @@ func (cfg *ApiConfig) HandlerPutMeToDesk(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	dpid := sql.NullString{
+		String: request.DeskPublicID,
+		Valid:  true,
+	}
+
 	// 3. send query
 	params := database.SetUserDeskByPublicIDParams{
 		PublicID:     accessingUser.PublicID,
-		DeskPublicID: request.DeskPublicID,
+		DeskPublicID: dpid,
 	}
 	me, err := cfg.DB.SetUserDeskByPublicID(r.Context(), params)
 	if err != nil { // no need to separate out sql.ErrNoRows: if this occurs something strange indeed has happened and it's fine to respond 500
@@ -216,12 +221,13 @@ func (cfg *ApiConfig) HandlerPutMeToDesk(w http.ResponseWriter, r *http.Request)
 	}
 
 	// 4. write response
-	response := userResponseParameters{}
-	response.populate(me, me.)
+	response := UsersResponseParameters{}
+	response.Populate(me)
+	jsonutils.WriteJSON(w, http.StatusOK, response)
 }
 
 // PUT /api/users/{user_public_id}
-func (cfg *ApiConfig) HandlerPutUsersByID(w http.ResponseWriter, r *http.Request) {
+func (cfg *ApiConfig) HandlerPutUsersByPublicID(w http.ResponseWriter, r *http.Request) {
 	// function to UPDATE specific user by public ID
 	// requires isadmin status from accessing user
 
@@ -315,6 +321,30 @@ func (cfg *ApiConfig) HandlerGetUsers(w http.ResponseWriter, r *http.Request) { 
 		response[i].Populate(u)
 	}
 	jsonutils.WriteJSON(w, http.StatusOK, response)
+}
+
+func (cfg *ApiConfig) HandlerGetMe(w http.ResponseWriter, r *http.Request) { // GET /api/me
+	/*
+		Same as GET /api/users/{user_public_id} but takes the upid from context instead.
+	*/
+	// 1. check authentication from context
+	accessingUser, err := auth.UserFromContext(w, r, cfg.DB)
+	if errors.Is(err, auth.ErrNoIDInContext) {
+		jsonutils.WriteError(w, http.StatusUnauthorized, err, "user authentication required to access this endpoint")
+		return
+	} else if err != nil {
+		return // any other err than auth.ErrNoIDInContext already sends a json.WriteError so no additional error writing is needed
+	} else if !accessingUser.IsActive {
+		jsonutils.WriteError(w, http.StatusForbidden, err, "accessing user account is inactive")
+		return
+	}
+
+	// 2. write response > note that running a GetUsersByPublicID query again is superfluous
+	//  this is already paret of the auth.UserFromContext function and the accessingUser return value is exactly the query response
+	response := UsersResponseParameters{}
+	response.Populate(accessingUser)
+	jsonutils.WriteJSON(w, http.StatusOK, response)
+
 }
 
 func (cfg *ApiConfig) HandlerGetUsersByID(w http.ResponseWriter, r *http.Request) { // GET /api/users/{user_public_id}
