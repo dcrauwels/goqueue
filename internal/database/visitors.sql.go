@@ -8,8 +8,7 @@ package database
 import (
 	"context"
 	"database/sql"
-
-	"github.com/google/uuid"
+	"time"
 )
 
 const callVisitorByPublicID = `-- name: CallVisitorByPublicID :one
@@ -37,19 +36,25 @@ func (q *Queries) CallVisitorByPublicID(ctx context.Context, publicID string) (V
 }
 
 const createVisitor = `-- name: CreateVisitor :one
-INSERT INTO visitors (id, public_id, created_at, updated_at, waiting_since, name, purpose_public_id, status, daily_ticket_number)
-VALUES (
-    gen_random_uuid(),
-    $1,
-    NOW(),
-    NOW(),
-    NOW(),
-    $2,
-    $3,
-    0, --status 
-    $4
+WITH inserted_visitor AS (
+    INSERT INTO visitors (id, public_id, created_at, updated_at, waiting_since, name, purpose_public_id, status, daily_ticket_number)
+    VALUES (
+        gen_random_uuid(),
+        $1,
+        NOW(),
+        NOW(),
+        NOW(),
+        $2,
+        $3,
+        0, --status 
+        $4
+    )
+    RETURNING id, created_at, updated_at, waiting_since, name, status, daily_ticket_number, public_id, purpose_public_id
 )
-RETURNING id, created_at, updated_at, waiting_since, name, status, daily_ticket_number, public_id, purpose_public_id
+SELECT iv.public_id, iv.waiting_since, iv.name, iv.status, iv.daily_ticket_number, iv.purpose_public_id, p.purpose_name AS purpose_name
+FROM inserted_visitor iv
+INNER JOIN purposes p 
+ON p.public_id = iv.purpose_public_id
 `
 
 type CreateVisitorParams struct {
@@ -59,24 +64,32 @@ type CreateVisitorParams struct {
 	DailyTicketNumber int32
 }
 
-func (q *Queries) CreateVisitor(ctx context.Context, arg CreateVisitorParams) (Visitor, error) {
+type CreateVisitorRow struct {
+	PublicID          string
+	WaitingSince      time.Time
+	Name              sql.NullString
+	Status            int32
+	DailyTicketNumber int32
+	PurposePublicID   string
+	PurposeName       string
+}
+
+func (q *Queries) CreateVisitor(ctx context.Context, arg CreateVisitorParams) (CreateVisitorRow, error) {
 	row := q.db.QueryRowContext(ctx, createVisitor,
 		arg.PublicID,
 		arg.Name,
 		arg.PurposePublicID,
 		arg.DailyTicketNumber,
 	)
-	var i Visitor
+	var i CreateVisitorRow
 	err := row.Scan(
-		&i.ID,
-		&i.CreatedAt,
-		&i.UpdatedAt,
+		&i.PublicID,
 		&i.WaitingSince,
 		&i.Name,
 		&i.Status,
 		&i.DailyTicketNumber,
-		&i.PublicID,
 		&i.PurposePublicID,
+		&i.PurposeName,
 	)
 	return i, err
 }
@@ -144,51 +157,40 @@ func (q *Queries) GetQueue(ctx context.Context) ([]Visitor, error) {
 	return items, nil
 }
 
-const getVisitorByID = `-- name: GetVisitorByID :one
-SELECT id, created_at, updated_at, waiting_since, name, status, daily_ticket_number, public_id, purpose_public_id FROM visitors
-WHERE visitors.id = $1
+const getVisitors = `-- name: GetVisitors :many
+SELECT v.public_id, v.waiting_since, v.name, v.status, v.daily_ticket_number, v.purpose_public_id, p.purpose_name 
+FROM visitors v
+INNER JOIN purposes p
+ON p.public_id = v.purpose_public_id
 `
 
-func (q *Queries) GetVisitorByID(ctx context.Context, id uuid.UUID) (Visitor, error) {
-	row := q.db.QueryRowContext(ctx, getVisitorByID, id)
-	var i Visitor
-	err := row.Scan(
-		&i.ID,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.WaitingSince,
-		&i.Name,
-		&i.Status,
-		&i.DailyTicketNumber,
-		&i.PublicID,
-		&i.PurposePublicID,
-	)
-	return i, err
+type GetVisitorsRow struct {
+	PublicID          string
+	WaitingSince      time.Time
+	Name              sql.NullString
+	Status            int32
+	DailyTicketNumber int32
+	PurposePublicID   string
+	PurposeName       string
 }
 
-const getVisitors = `-- name: GetVisitors :many
-SELECT id, created_at, updated_at, waiting_since, name, status, daily_ticket_number, public_id, purpose_public_id FROM visitors
-`
-
-func (q *Queries) GetVisitors(ctx context.Context) ([]Visitor, error) {
+func (q *Queries) GetVisitors(ctx context.Context) ([]GetVisitorsRow, error) {
 	rows, err := q.db.QueryContext(ctx, getVisitors)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Visitor
+	var items []GetVisitorsRow
 	for rows.Next() {
-		var i Visitor
+		var i GetVisitorsRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.CreatedAt,
-			&i.UpdatedAt,
+			&i.PublicID,
 			&i.WaitingSince,
 			&i.Name,
 			&i.Status,
 			&i.DailyTicketNumber,
-			&i.PublicID,
 			&i.PurposePublicID,
+			&i.PurposeName,
 		); err != nil {
 			return nil, err
 		}
@@ -204,52 +206,74 @@ func (q *Queries) GetVisitors(ctx context.Context) ([]Visitor, error) {
 }
 
 const getVisitorsByPublicID = `-- name: GetVisitorsByPublicID :one
-SELECT id, created_at, updated_at, waiting_since, name, status, daily_ticket_number, public_id, purpose_public_id FROM visitors
-WHERE public_id = $1
+SELECT v.public_id, v.waiting_since, v.name, v.status, v.daily_ticket_number, v.purpose_public_id, p.purpose_name 
+FROM visitors v
+INNER JOIN purposes p
+ON p.public_id = v.purpose_public_id
+WHERE v.public_id = $1
 `
 
-func (q *Queries) GetVisitorsByPublicID(ctx context.Context, publicID string) (Visitor, error) {
+type GetVisitorsByPublicIDRow struct {
+	PublicID          string
+	WaitingSince      time.Time
+	Name              sql.NullString
+	Status            int32
+	DailyTicketNumber int32
+	PurposePublicID   string
+	PurposeName       string
+}
+
+func (q *Queries) GetVisitorsByPublicID(ctx context.Context, publicID string) (GetVisitorsByPublicIDRow, error) {
 	row := q.db.QueryRowContext(ctx, getVisitorsByPublicID, publicID)
-	var i Visitor
+	var i GetVisitorsByPublicIDRow
 	err := row.Scan(
-		&i.ID,
-		&i.CreatedAt,
-		&i.UpdatedAt,
+		&i.PublicID,
 		&i.WaitingSince,
 		&i.Name,
 		&i.Status,
 		&i.DailyTicketNumber,
-		&i.PublicID,
 		&i.PurposePublicID,
+		&i.PurposeName,
 	)
 	return i, err
 }
 
 const getVisitorsByPurposePublicID = `-- name: GetVisitorsByPurposePublicID :many
-SELECT id, created_at, updated_at, waiting_since, name, status, daily_ticket_number, public_id, purpose_public_id FROM visitors
-WHERE purpose_public_id = $1
-ORDER BY waiting_since ASC
+SELECT v.public_id, v.waiting_since, v.name, v.status, v.daily_ticket_number, v.purpose_public_id, p.purpose_name
+FROM visitors v
+INNER JOIN purposes p
+ON p.public_id = v.purpose_public_id
+WHERE v.purpose_public_id = $1
+ORDER BY v.waiting_since ASC
 `
 
-func (q *Queries) GetVisitorsByPurposePublicID(ctx context.Context, purposePublicID string) ([]Visitor, error) {
+type GetVisitorsByPurposePublicIDRow struct {
+	PublicID          string
+	WaitingSince      time.Time
+	Name              sql.NullString
+	Status            int32
+	DailyTicketNumber int32
+	PurposePublicID   string
+	PurposeName       string
+}
+
+func (q *Queries) GetVisitorsByPurposePublicID(ctx context.Context, purposePublicID string) ([]GetVisitorsByPurposePublicIDRow, error) {
 	rows, err := q.db.QueryContext(ctx, getVisitorsByPurposePublicID, purposePublicID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Visitor
+	var items []GetVisitorsByPurposePublicIDRow
 	for rows.Next() {
-		var i Visitor
+		var i GetVisitorsByPurposePublicIDRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.CreatedAt,
-			&i.UpdatedAt,
+			&i.PublicID,
 			&i.WaitingSince,
 			&i.Name,
 			&i.Status,
 			&i.DailyTicketNumber,
-			&i.PublicID,
 			&i.PurposePublicID,
+			&i.PurposeName,
 		); err != nil {
 			return nil, err
 		}
@@ -265,35 +289,46 @@ func (q *Queries) GetVisitorsByPurposePublicID(ctx context.Context, purposePubli
 }
 
 const getVisitorsByPurposePublicIDAndStatus = `-- name: GetVisitorsByPurposePublicIDAndStatus :many
-SELECT id, created_at, updated_at, waiting_since, name, status, daily_ticket_number, public_id, purpose_public_id FROM visitors
-WHERE purpose_public_id = $1 AND status = $2
-ORDER BY waiting_since ASC
+SELECT v.public_id, v.waiting_since, v.name, v.status, v.daily_ticket_number, v.purpose_public_id, p.purpose_name
+FROM visitors v
+INNER JOIN purposes p
+ON p.public_id = v.purpose_public_id
+WHERE v.purpose_public_id $1 AND v.status = $2
+ORDER BY v.waiting_since ASC
 `
 
 type GetVisitorsByPurposePublicIDAndStatusParams struct {
-	PurposePublicID string
-	Status          int32
+	Column1 interface{}
+	Status  int32
 }
 
-func (q *Queries) GetVisitorsByPurposePublicIDAndStatus(ctx context.Context, arg GetVisitorsByPurposePublicIDAndStatusParams) ([]Visitor, error) {
-	rows, err := q.db.QueryContext(ctx, getVisitorsByPurposePublicIDAndStatus, arg.PurposePublicID, arg.Status)
+type GetVisitorsByPurposePublicIDAndStatusRow struct {
+	PublicID          string
+	WaitingSince      time.Time
+	Name              sql.NullString
+	Status            int32
+	DailyTicketNumber int32
+	PurposePublicID   string
+	PurposeName       string
+}
+
+func (q *Queries) GetVisitorsByPurposePublicIDAndStatus(ctx context.Context, arg GetVisitorsByPurposePublicIDAndStatusParams) ([]GetVisitorsByPurposePublicIDAndStatusRow, error) {
+	rows, err := q.db.QueryContext(ctx, getVisitorsByPurposePublicIDAndStatus, arg.Column1, arg.Status)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Visitor
+	var items []GetVisitorsByPurposePublicIDAndStatusRow
 	for rows.Next() {
-		var i Visitor
+		var i GetVisitorsByPurposePublicIDAndStatusRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.CreatedAt,
-			&i.UpdatedAt,
+			&i.PublicID,
 			&i.WaitingSince,
 			&i.Name,
 			&i.Status,
 			&i.DailyTicketNumber,
-			&i.PublicID,
 			&i.PurposePublicID,
+			&i.PurposeName,
 		); err != nil {
 			return nil, err
 		}
@@ -309,30 +344,41 @@ func (q *Queries) GetVisitorsByPurposePublicIDAndStatus(ctx context.Context, arg
 }
 
 const getVisitorsByStatus = `-- name: GetVisitorsByStatus :many
-SELECT id, created_at, updated_at, waiting_since, name, status, daily_ticket_number, public_id, purpose_public_id FROM visitors
-WHERE status = $1 -- status
-ORDER BY waiting_since ASC
+SELECT v.public_id, v.waiting_since, v.name, v.status, v.daily_ticket_number, v.purpose_public_id, p.purpose_name
+FROM visitors v
+INNER JOIN purposes p
+ON p.public_id = v.purpose_public_id
+WHERE v.status = $1
+ORDER BY v.waiting_since ASC
 `
 
-func (q *Queries) GetVisitorsByStatus(ctx context.Context, status int32) ([]Visitor, error) {
+type GetVisitorsByStatusRow struct {
+	PublicID          string
+	WaitingSince      time.Time
+	Name              sql.NullString
+	Status            int32
+	DailyTicketNumber int32
+	PurposePublicID   string
+	PurposeName       string
+}
+
+func (q *Queries) GetVisitorsByStatus(ctx context.Context, status int32) ([]GetVisitorsByStatusRow, error) {
 	rows, err := q.db.QueryContext(ctx, getVisitorsByStatus, status)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Visitor
+	var items []GetVisitorsByStatusRow
 	for rows.Next() {
-		var i Visitor
+		var i GetVisitorsByStatusRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.CreatedAt,
-			&i.UpdatedAt,
+			&i.PublicID,
 			&i.WaitingSince,
 			&i.Name,
 			&i.Status,
 			&i.DailyTicketNumber,
-			&i.PublicID,
 			&i.PurposePublicID,
+			&i.PurposeName,
 		); err != nil {
 			return nil, err
 		}
@@ -348,30 +394,41 @@ func (q *Queries) GetVisitorsByStatus(ctx context.Context, status int32) ([]Visi
 }
 
 const getVisitorsForToday = `-- name: GetVisitorsForToday :many
-SELECT id, created_at, updated_at, waiting_since, name, status, daily_ticket_number, public_id, purpose_public_id FROM visitors
+SELECT v.public_id, v.waiting_since, v.name, v.status, v.daily_ticket_number, v.purpose_public_id, p.purpose_name
+FROM visitors v
+INNER JOIN purposes p
+ON p.public_id = v.purpose_public_id
 WHERE waiting_since::date = CURRENT_DATE
-ORDER BY waiting_since ASC
+ORDER BY v.waiting_since ASC
 `
 
-func (q *Queries) GetVisitorsForToday(ctx context.Context) ([]Visitor, error) {
+type GetVisitorsForTodayRow struct {
+	PublicID          string
+	WaitingSince      time.Time
+	Name              sql.NullString
+	Status            int32
+	DailyTicketNumber int32
+	PurposePublicID   string
+	PurposeName       string
+}
+
+func (q *Queries) GetVisitorsForToday(ctx context.Context) ([]GetVisitorsForTodayRow, error) {
 	rows, err := q.db.QueryContext(ctx, getVisitorsForToday)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Visitor
+	var items []GetVisitorsForTodayRow
 	for rows.Next() {
-		var i Visitor
+		var i GetVisitorsForTodayRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.CreatedAt,
-			&i.UpdatedAt,
+			&i.PublicID,
 			&i.WaitingSince,
 			&i.Name,
 			&i.Status,
 			&i.DailyTicketNumber,
-			&i.PublicID,
 			&i.PurposePublicID,
+			&i.PurposeName,
 		); err != nil {
 			return nil, err
 		}
@@ -387,30 +444,41 @@ func (q *Queries) GetVisitorsForToday(ctx context.Context) ([]Visitor, error) {
 }
 
 const getWaitingVisitorsByPurposePublicID = `-- name: GetWaitingVisitorsByPurposePublicID :many
-SELECT id, created_at, updated_at, waiting_since, name, status, daily_ticket_number, public_id, purpose_public_id FROM visitors 
-WHERE purpose_public_id = $1 AND status = 1 -- NOTE that statuses are still not properly implemented
-ORDER BY waiting_since ASC
+SELECT v.public_id, v.waiting_since, v.name, v.status, v.daily_ticket_number, v.purpose_public_id, p.purpose_name
+FROM visitors v
+INNER JOIN purposes p
+ON p.public_id = v.purpose_public_id
+WHERE v.purpose_public_id $1 AND v.status = 1
+ORDER BY v.waiting_since ASC
 `
 
-func (q *Queries) GetWaitingVisitorsByPurposePublicID(ctx context.Context, purposePublicID string) ([]Visitor, error) {
-	rows, err := q.db.QueryContext(ctx, getWaitingVisitorsByPurposePublicID, purposePublicID)
+type GetWaitingVisitorsByPurposePublicIDRow struct {
+	PublicID          string
+	WaitingSince      time.Time
+	Name              sql.NullString
+	Status            int32
+	DailyTicketNumber int32
+	PurposePublicID   string
+	PurposeName       string
+}
+
+func (q *Queries) GetWaitingVisitorsByPurposePublicID(ctx context.Context, dollar_1 interface{}) ([]GetWaitingVisitorsByPurposePublicIDRow, error) {
+	rows, err := q.db.QueryContext(ctx, getWaitingVisitorsByPurposePublicID, dollar_1)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Visitor
+	var items []GetWaitingVisitorsByPurposePublicIDRow
 	for rows.Next() {
-		var i Visitor
+		var i GetWaitingVisitorsByPurposePublicIDRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.CreatedAt,
-			&i.UpdatedAt,
+			&i.PublicID,
 			&i.WaitingSince,
 			&i.Name,
 			&i.Status,
 			&i.DailyTicketNumber,
-			&i.PublicID,
 			&i.PurposePublicID,
+			&i.PurposeName,
 		); err != nil {
 			return nil, err
 		}
@@ -426,12 +494,15 @@ func (q *Queries) GetWaitingVisitorsByPurposePublicID(ctx context.Context, purpo
 }
 
 const listVisitors = `-- name: ListVisitors :many
-SELECT id, created_at, updated_at, waiting_since, name, status, daily_ticket_number, public_id, purpose_public_id FROM visitors
-WHERE ($1::int IS NULL OR status = $1)
-    AND ($2::text IS NULL OR purpose_public_id = $2)
-    AND ($3::timestamp IS NULL OR created_at >= $3)
-    AND ($4::timestamp IS NULL OR created_at < $4)
-ORDER BY waiting_since ASC
+SELECT v.public_id, v.waiting_since, v.name, v.status, v.daily_ticket_number, v.purpose_public_id, p.purpose_name
+FROM visitors v
+INNER JOIN purposes p
+ON p.public_id = v.purpose_public_id
+WHERE ($1::int IS NULL OR v.status = $1)
+    AND ($2::text IS NULL OR v.purpose_public_id = $2)
+    AND ($3::timestamp IS NULL OR v.created_at >= $3)
+    AND ($4::timestamp IS NULL OR v.created_at < $4)
+ORDER BY v.waiting_since ASC
 `
 
 type ListVisitorsParams struct {
@@ -441,7 +512,17 @@ type ListVisitorsParams struct {
 	EndDate         sql.NullTime
 }
 
-func (q *Queries) ListVisitors(ctx context.Context, arg ListVisitorsParams) ([]Visitor, error) {
+type ListVisitorsRow struct {
+	PublicID          string
+	WaitingSince      time.Time
+	Name              sql.NullString
+	Status            int32
+	DailyTicketNumber int32
+	PurposePublicID   string
+	PurposeName       string
+}
+
+func (q *Queries) ListVisitors(ctx context.Context, arg ListVisitorsParams) ([]ListVisitorsRow, error) {
 	rows, err := q.db.QueryContext(ctx, listVisitors,
 		arg.Status,
 		arg.PurposePublicID,
@@ -452,19 +533,17 @@ func (q *Queries) ListVisitors(ctx context.Context, arg ListVisitorsParams) ([]V
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Visitor
+	var items []ListVisitorsRow
 	for rows.Next() {
-		var i Visitor
+		var i ListVisitorsRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.CreatedAt,
-			&i.UpdatedAt,
+			&i.PublicID,
 			&i.WaitingSince,
 			&i.Name,
 			&i.Status,
 			&i.DailyTicketNumber,
-			&i.PublicID,
 			&i.PurposePublicID,
+			&i.PurposeName,
 		); err != nil {
 			return nil, err
 		}
@@ -520,10 +599,16 @@ func (q *Queries) SetAllVisitorsStatusCompleted(ctx context.Context) ([]Visitor,
 }
 
 const setVisitorByPublicID = `-- name: SetVisitorByPublicID :one
-UPDATE visitors
-SET name = $2, purpose_public_id = $3, status = $4, updated_at = NOW() -- status
-WHERE public_id = $1
-RETURNING id, created_at, updated_at, waiting_since, name, status, daily_ticket_number, public_id, purpose_public_id
+WITH updated_visitor AS(
+    UPDATE visitors
+    SET name = $2, purpose_public_id = $3, status = $4, updated_at = NOW()
+    WHERE visitors.public_id = $1
+    RETURNING id, created_at, updated_at, waiting_since, name, status, daily_ticket_number, public_id, purpose_public_id
+)
+SELECT uv.public_id, uv.waiting_since, uv.name, uv.status, uv.daily_ticket_number, uv.purpose_public_id, p.purpose_name
+FROM updated_visitor uv
+INNER JOIN purposes p
+ON p.public_id = uv.purpose_public_id
 `
 
 type SetVisitorByPublicIDParams struct {
@@ -533,33 +618,47 @@ type SetVisitorByPublicIDParams struct {
 	Status          int32
 }
 
-func (q *Queries) SetVisitorByPublicID(ctx context.Context, arg SetVisitorByPublicIDParams) (Visitor, error) {
+type SetVisitorByPublicIDRow struct {
+	PublicID          string
+	WaitingSince      time.Time
+	Name              sql.NullString
+	Status            int32
+	DailyTicketNumber int32
+	PurposePublicID   string
+	PurposeName       string
+}
+
+func (q *Queries) SetVisitorByPublicID(ctx context.Context, arg SetVisitorByPublicIDParams) (SetVisitorByPublicIDRow, error) {
 	row := q.db.QueryRowContext(ctx, setVisitorByPublicID,
 		arg.PublicID,
 		arg.Name,
 		arg.PurposePublicID,
 		arg.Status,
 	)
-	var i Visitor
+	var i SetVisitorByPublicIDRow
 	err := row.Scan(
-		&i.ID,
-		&i.CreatedAt,
-		&i.UpdatedAt,
+		&i.PublicID,
 		&i.WaitingSince,
 		&i.Name,
 		&i.Status,
 		&i.DailyTicketNumber,
-		&i.PublicID,
 		&i.PurposePublicID,
+		&i.PurposeName,
 	)
 	return i, err
 }
 
 const setVisitorStatusByPublicID = `-- name: SetVisitorStatusByPublicID :one
-UPDATE visitors
-SET status = $2, updated_at = NOW() --status 
-WHERE public_id = $1
-RETURNING id, created_at, updated_at, waiting_since, name, status, daily_ticket_number, public_id, purpose_public_id
+WITH updated_visitor AS (
+    UPDATE visitors
+    SET status = $2, updated_at = NOW() --status 
+    WHERE visitors.public_id = $1
+    RETURNING id, created_at, updated_at, waiting_since, name, status, daily_ticket_number, public_id, purpose_public_id
+)
+SELECT uv.public_id, uv.waiting_since, uv.name, uv.status, uv.daily_ticket_number, uv.purpose_public_id, p.purpose_name
+FROM updated_visitor uv
+INNER JOIN purposes p
+ON p.public_id = uv.purpose_public_id
 `
 
 type SetVisitorStatusByPublicIDParams struct {
@@ -567,19 +666,27 @@ type SetVisitorStatusByPublicIDParams struct {
 	Status   int32
 }
 
-func (q *Queries) SetVisitorStatusByPublicID(ctx context.Context, arg SetVisitorStatusByPublicIDParams) (Visitor, error) {
+type SetVisitorStatusByPublicIDRow struct {
+	PublicID          string
+	WaitingSince      time.Time
+	Name              sql.NullString
+	Status            int32
+	DailyTicketNumber int32
+	PurposePublicID   string
+	PurposeName       string
+}
+
+func (q *Queries) SetVisitorStatusByPublicID(ctx context.Context, arg SetVisitorStatusByPublicIDParams) (SetVisitorStatusByPublicIDRow, error) {
 	row := q.db.QueryRowContext(ctx, setVisitorStatusByPublicID, arg.PublicID, arg.Status)
-	var i Visitor
+	var i SetVisitorStatusByPublicIDRow
 	err := row.Scan(
-		&i.ID,
-		&i.CreatedAt,
-		&i.UpdatedAt,
+		&i.PublicID,
 		&i.WaitingSince,
 		&i.Name,
 		&i.Status,
 		&i.DailyTicketNumber,
-		&i.PublicID,
 		&i.PurposePublicID,
+		&i.PurposeName,
 	)
 	return i, err
 }

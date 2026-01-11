@@ -21,7 +21,7 @@ type configReader interface {
 
 type databaseQueryer interface {
 	GetUserByPublicID(context.Context, string) (database.User, error)
-	GetVisitorsByPublicID(context.Context, string) (database.Visitor, error)
+	GetVisitorsByPublicID(context.Context, string) (database.GetVisitorsByPublicIDRow, error)
 	CreateRefreshToken(context.Context, database.CreateRefreshTokenParams) (database.RefreshToken, error)
 	RevokeRefreshTokenByToken(context.Context, string) (database.RefreshToken, error)
 }

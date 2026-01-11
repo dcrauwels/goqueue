@@ -18,7 +18,8 @@
 - [ ] What range of statuses will be allowed? There are multiple NYI's for this, mostly in auth_visitors.go.
 - [ ] Double-check *all* authentication checks in handlers if user.IsActive is taken into account. Compare to how it's done in HandlerPostDesks in handler_desks.go
 - [ ] HandlerPutUsersByID uses an incorrect struct for decoding the request into.
-- [ ] Need to write a migration to change the desk_id fk column in users to desk_public_id.
+- [x] Need to write a migration to change the desk_id fk column in users to desk_public_id.
+- [ ] Go through all 404 not found return codes and see which ones should be replaced with 204 no content. (Probably all of them, at least the ones that are downstream from sql.ErrNoRows.)
 
 ## Deadlines
 - [ ] Think about which requests should timeout or have some sort of deadline
@@ -42,13 +43,17 @@
 - [x] write handler for PUT /api/users/{user_public_id}/desks
 - [x] write handler for GET /api/me
 - [ ] visitor enters building and sends POST request to /api/visitors
-- [ ] user sees visitor show up through periodic GET /api/visitors/queue (or maybe there is a way to trigger this?)
+- [ ] user sees visitor show up through periodic GET /api/visitors/queue (or maybe there is a way to trigger this? i.e. if /api/visitors takes a POST make all logged in users send a GET to the queue endpoint)
 - [ ] user calls visitor by sending POST /api/visitors/call-next
-- [ ] user should also be able to send PUT /api/visitors/{visitor_public_id}/status and change their status that way
-- [ ] write associated endpoint
+- [ ] the return value should be a servicelog with the visitor information inside of it 
+- [ ] user should also be able to send PUT /api/visitors/{visitor_public_id}/call and change their status that way. return value should be same as above: a servicelog
+- [ ] write associated handler
 - [ ] visitor sees what desk they go to from GET /api/visitors/{visitor_public_id} and GET /api/visitors/screen
-- [ ] user sees the visitor at their desk through GET /api/servicelogs/me
+- [ ] the visitor should have been sent to a page that periodically sends GET /api/visitors/{their_id} as a result of them sending a POST request earlier. Technically this is a frontend question.
+- [ ] user sees the visitor called to or already being serviced at their desk through GET /api/me/active-service. The return value should be the same as above: a servicelog with the visitor information inside of it. this means the desk information should also be inside that struct
 - [ ] write associated handler: HandlerGetMyServicelogs
+- [ ] the user can mark the visitor as inservice through PUT /api/visitors/{visitor_public_id}/service. The return value should be a servicelog.
+- [ ] the user can mark the visitor as completed through PUT /api/visitors/{visitor_public_id}/complete. The return value should be a servicelog.
 - [x] Add reset time env var
 - [x] load reset time env var into apiConfig variable
 - [ ] Think about how to implement reset time

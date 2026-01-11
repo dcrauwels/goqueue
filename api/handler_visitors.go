@@ -11,7 +11,6 @@ import (
 	"github.com/dcrauwels/goqueue/internal/database"
 	"github.com/dcrauwels/goqueue/jsonutils"
 	"github.com/dcrauwels/goqueue/strutils"
-	"github.com/google/uuid"
 )
 
 type VisitorsPostRequestParameters struct {
@@ -27,25 +26,21 @@ type VisitorsPutRequestParameters struct {
 }
 
 type VisitorsResponseParameters struct {
-	ID                uuid.UUID      `json:"id"`
 	PublicID          string         `json:"public_id"`
-	CreatedAt         time.Time      `json:"created_at"`
-	UpdatedAt         time.Time      `json:"updated_at"`
 	WaitingSince      time.Time      `json:"waiting_since"`
 	Name              sql.NullString `json:"name"`
 	PurposePublicID   string         `json:"purpose_public_id"`
 	Status            int32          `json:"status"`
 	DailyTicketNumber int32          `json:"daily_ticket_number"`
+	PurposeName       string         `json:"purpose_name"`
 }
 
-func (vrp *VisitorsResponseParameters) Populate(v database.Visitor) {
-	vrp.ID = v.ID
+func (vrp *VisitorsResponseParameters) Populate(v database.CreateVisitorRow) {
 	vrp.PublicID = v.PublicID
-	vrp.CreatedAt = v.CreatedAt
-	vrp.UpdatedAt = v.UpdatedAt
 	vrp.WaitingSince = v.WaitingSince
 	vrp.Name = v.Name
 	vrp.PurposePublicID = v.PurposePublicID
+	vrp.PurposeName = v.PurposeName
 	vrp.Status = v.Status
 	vrp.DailyTicketNumber = v.DailyTicketNumber
 }
@@ -292,6 +287,7 @@ func (cfg *ApiConfig) HandlerGetQueue(w http.ResponseWriter, r *http.Request) { 
 }
 
 func (cfg *ApiConfig) HandlerCallNextVisitor(w http.ResponseWriter, r *http.Request) { // POST /api/visitors/call-next
+	response := VisitorsResponseParameters{}
 	// 1. check auth
 	accessingUser, err := auth.UserFromContext(w, r, cfg.DB)
 	if err != nil {
@@ -349,7 +345,7 @@ func (cfg *ApiConfig) HandlerCallNextVisitor(w http.ResponseWriter, r *http.Requ
 	calledVisitor, err := cfg.DB.GetNextWaitingVisitor(r.Context())
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			jsonutils.WriteError(w, http.StatusNotFound, err, "no visitors in queue")
+			jsonutils.WriteJSON(w, http.StatusNoContent, response)
 			return
 		} else {
 			jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (CallNextVisitor in HandlerCallNextVisitor)")
@@ -372,7 +368,6 @@ func (cfg *ApiConfig) HandlerCallNextVisitor(w http.ResponseWriter, r *http.Requ
 	// 4.2 insert servicelog
 
 	// 3. write response
-	response := VisitorsResponseParameters{}
 	response.Populate(updatedVisitor)
 	jsonutils.WriteJSON(w, http.StatusOK, response)
 }
