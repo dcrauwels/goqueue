@@ -12,5 +12,5 @@ FROM visitors v
 INNER JOIN purposes p
 ON p.public_id = v.purpose_public_id;
 
--- + goose Down
+-- +goose Down
 DROP VIEW IF EXISTS visitor_response_values;

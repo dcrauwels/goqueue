@@ -29,10 +29,10 @@ RETURNING id, created_at, updated_at, email, hashed_password, is_admin, is_activ
 `
 
 type CreateUserParams struct {
-	PublicID       string
-	Email          string
-	HashedPassword string
-	FullName       string
+	PublicID       string `json:"public_id"`
+	Email          string `json:"email"`
+	HashedPassword string `json:"hashed_password"`
+	FullName       string `json:"full_name"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
@@ -197,11 +197,11 @@ returning id, created_at, updated_at, email, hashed_password, is_admin, is_activ
 `
 
 type SetUserByPublicIDParams struct {
-	PublicID string
-	Email    string
-	FullName string
-	IsAdmin  bool
-	IsActive bool
+	PublicID string `json:"public_id"`
+	Email    string `json:"email"`
+	FullName string `json:"full_name"`
+	IsAdmin  bool   `json:"is_admin"`
+	IsActive bool   `json:"is_active"`
 }
 
 func (q *Queries) SetUserByPublicID(ctx context.Context, arg SetUserByPublicIDParams) (User, error) {
@@ -236,8 +236,8 @@ RETURNING id, created_at, updated_at, email, hashed_password, is_admin, is_activ
 `
 
 type SetUserDeskByPublicIDParams struct {
-	PublicID     string
-	DeskPublicID sql.NullString
+	PublicID     string         `json:"public_id"`
+	DeskPublicID sql.NullString `json:"desk_public_id"`
 }
 
 func (q *Queries) SetUserDeskByPublicID(ctx context.Context, arg SetUserDeskByPublicIDParams) (User, error) {
@@ -266,9 +266,9 @@ RETURNING id, created_at, updated_at, email, hashed_password, is_admin, is_activ
 `
 
 type SetUserEmailPasswordByIDParams struct {
-	ID             uuid.UUID
-	Email          string
-	HashedPassword string
+	ID             uuid.UUID `json:"id"`
+	Email          string    `json:"email"`
+	HashedPassword string    `json:"hashed_password"`
 }
 
 func (q *Queries) SetUserEmailPasswordByID(ctx context.Context, arg SetUserEmailPasswordByIDParams) (User, error) {
@@ -297,8 +297,8 @@ RETURNING id, created_at, updated_at, email, hashed_password, is_admin, is_activ
 `
 
 type SetUserFullNameByIDParams struct {
-	ID       uuid.UUID
-	FullName string
+	ID       uuid.UUID `json:"id"`
+	FullName string    `json:"full_name"`
 }
 
 func (q *Queries) SetUserFullNameByID(ctx context.Context, arg SetUserFullNameByIDParams) (User, error) {
@@ -327,8 +327,8 @@ RETURNING id, created_at, updated_at, email, hashed_password, is_admin, is_activ
 `
 
 type SetUserInactiveByIDParams struct {
-	ID       uuid.UUID
-	IsActive bool
+	ID       uuid.UUID `json:"id"`
+	IsActive bool      `json:"is_active"`
 }
 
 func (q *Queries) SetUserInactiveByID(ctx context.Context, arg SetUserInactiveByIDParams) (User, error) {
@@ -357,8 +357,8 @@ RETURNING id, created_at, updated_at, email, hashed_password, is_admin, is_activ
 `
 
 type SetUserIsAdminByIDParams struct {
-	ID      uuid.UUID
-	IsAdmin bool
+	ID      uuid.UUID `json:"id"`
+	IsAdmin bool      `json:"is_admin"`
 }
 
 func (q *Queries) SetUserIsAdminByID(ctx context.Context, arg SetUserIsAdminByIDParams) (User, error) {

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"time"
 
 	"github.com/dcrauwels/goqueue/auth"
 	"github.com/dcrauwels/goqueue/internal/database"
@@ -25,7 +24,7 @@ type VisitorsPutRequestParameters struct {
 	Status          int32  `json:"status"`
 }
 
-type VisitorsResponseParameters struct {
+/*type VisitorsResponseParameters struct {
 	PublicID          string         `json:"public_id"`
 	WaitingSince      time.Time      `json:"waiting_since"`
 	Name              sql.NullString `json:"name"`
@@ -43,7 +42,7 @@ func (vrp *VisitorsResponseParameters) Populate(v database.CreateVisitorRow) {
 	vrp.PurposeName = v.PurposeName
 	vrp.Status = v.Status
 	vrp.DailyTicketNumber = v.DailyTicketNumber
-}
+}*/
 
 type VisitorStatus int32
 
@@ -106,9 +105,7 @@ func (cfg *ApiConfig) HandlerPostVisitors(w http.ResponseWriter, r *http.Request
 	}
 
 	// 6. return response 201
-	response := VisitorsResponseParameters{}
-	response.Populate(createdVisitor)
-	jsonutils.WriteJSON(w, http.StatusCreated, response)
+	jsonutils.WriteJSON(w, http.StatusCreated, createdVisitor)
 }
 
 func (cfg *ApiConfig) HandlerPutVisitorsByPublicID(w http.ResponseWriter, r *http.Request) { // PUT /api/visitors/{visitor_public_id}
@@ -163,10 +160,7 @@ func (cfg *ApiConfig) HandlerPutVisitorsByPublicID(w http.ResponseWriter, r *htt
 	}
 
 	// 6. write response
-	response := VisitorsResponseParameters{}
-	response.Populate(updatedVisitor)
-
-	jsonutils.WriteJSON(w, http.StatusOK, response)
+	jsonutils.WriteJSON(w, http.StatusOK, updatedVisitor)
 }
 
 func (cfg *ApiConfig) HandlerGetVisitors(w http.ResponseWriter, r *http.Request) { // GET /api/visitors
@@ -224,11 +218,7 @@ func (cfg *ApiConfig) HandlerGetVisitors(w http.ResponseWriter, r *http.Request)
 	}
 
 	// 4. write response
-	response := make([]VisitorsResponseParameters, len(visitors))
-	for i, v := range visitors {
-		response[i].Populate(v)
-	}
-	jsonutils.WriteJSON(w, http.StatusOK, response)
+	jsonutils.WriteJSON(w, http.StatusOK, visitors)
 }
 
 func (cfg *ApiConfig) HandlerGetVisitorsByPublicID(w http.ResponseWriter, r *http.Request) { // GET /api/visitors/{visitor_public_id}
@@ -250,9 +240,7 @@ func (cfg *ApiConfig) HandlerGetVisitorsByPublicID(w http.ResponseWriter, r *htt
 	}
 
 	// 3. write response
-	response := VisitorsResponseParameters{}
-	response.Populate(visitor)
-	jsonutils.WriteJSON(w, http.StatusOK, response)
+	jsonutils.WriteJSON(w, http.StatusOK, visitor)
 
 }
 
@@ -279,15 +267,10 @@ func (cfg *ApiConfig) HandlerGetQueue(w http.ResponseWriter, r *http.Request) { 
 	}
 
 	// 3. write response
-	response := make([]VisitorsResponseParameters, len(visitors))
-	for i, v := range visitors {
-		response[i].Populate(v)
-	}
-	jsonutils.WriteJSON(w, http.StatusOK, response)
+	jsonutils.WriteJSON(w, http.StatusOK, visitors)
 }
 
 func (cfg *ApiConfig) HandlerCallNextVisitor(w http.ResponseWriter, r *http.Request) { // POST /api/visitors/call-next
-	response := VisitorsResponseParameters{}
 	// 1. check auth
 	accessingUser, err := auth.UserFromContext(w, r, cfg.DB)
 	if err != nil {

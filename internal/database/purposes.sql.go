@@ -25,9 +25,9 @@ RETURNING id, created_at, updated_at, purpose_name, parent_purpose_id, public_id
 `
 
 type CreatePurposeParams struct {
-	PublicID        string
-	PurposeName     string
-	ParentPurposeID uuid.NullUUID
+	PublicID        string        `json:"public_id"`
+	PurposeName     string        `json:"purpose_name"`
+	ParentPurposeID uuid.NullUUID `json:"parent_purpose_id"`
 }
 
 func (q *Queries) CreatePurpose(ctx context.Context, arg CreatePurposeParams) (Purpose, error) {
@@ -178,9 +178,9 @@ RETURNING id, created_at, updated_at, purpose_name, parent_purpose_id, public_id
 `
 
 type SetPurposeParams struct {
-	ID              uuid.UUID
-	PurposeName     string
-	ParentPurposeID uuid.NullUUID
+	ID              uuid.UUID     `json:"id"`
+	PurposeName     string        `json:"purpose_name"`
+	ParentPurposeID uuid.NullUUID `json:"parent_purpose_id"`
 }
 
 func (q *Queries) SetPurpose(ctx context.Context, arg SetPurposeParams) (Purpose, error) {
@@ -205,9 +205,9 @@ RETURNING id, created_at, updated_at, purpose_name, parent_purpose_id, public_id
 `
 
 type SetPurposeByPublicIDParams struct {
-	PublicID        string
-	PurposeName     string
-	ParentPurposeID uuid.NullUUID
+	PublicID        string        `json:"public_id"`
+	PurposeName     string        `json:"purpose_name"`
+	ParentPurposeID uuid.NullUUID `json:"parent_purpose_id"`
 }
 
 func (q *Queries) SetPurposeByPublicID(ctx context.Context, arg SetPurposeByPublicIDParams) (Purpose, error) {
@@ -232,8 +232,8 @@ RETURNING id, created_at, updated_at, purpose_name, parent_purpose_id, public_id
 `
 
 type SetPurposeNameParams struct {
-	ID          uuid.UUID
-	PurposeName string
+	ID          uuid.UUID `json:"id"`
+	PurposeName string    `json:"purpose_name"`
 }
 
 func (q *Queries) SetPurposeName(ctx context.Context, arg SetPurposeNameParams) (Purpose, error) {
@@ -258,8 +258,8 @@ RETURNING id, created_at, updated_at, purpose_name, parent_purpose_id, public_id
 `
 
 type SetPurposeParentIDParams struct {
-	ID              uuid.UUID
-	ParentPurposeID uuid.NullUUID
+	ID              uuid.UUID     `json:"id"`
+	ParentPurposeID uuid.NullUUID `json:"parent_purpose_id"`
 }
 
 func (q *Queries) SetPurposeParentID(ctx context.Context, arg SetPurposeParentIDParams) (Purpose, error) {
@@ -284,8 +284,8 @@ RETURNING id, created_at, updated_at, purpose_name, parent_purpose_id, public_id
 `
 
 type SetPurposeParentIDByParentPurposeNameParams struct {
-	ID          uuid.UUID
-	PurposeName string
+	ID          uuid.UUID `json:"id"`
+	PurposeName string    `json:"purpose_name"`
 }
 
 func (q *Queries) SetPurposeParentIDByParentPurposeName(ctx context.Context, arg SetPurposeParentIDByParentPurposeNameParams) (Purpose, error) {

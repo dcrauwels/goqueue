@@ -27,10 +27,10 @@ RETURNING id, created_at, updated_at, called_at, is_active, public_id, user_publ
 `
 
 type CreateServiceLogsParams struct {
-	PublicID        string
-	VisitorPublicID string
-	UserPublicID    string
-	DeskPublicID    string
+	PublicID        string `json:"public_id"`
+	VisitorPublicID string `json:"visitor_public_id"`
+	UserPublicID    string `json:"user_public_id"`
+	DeskPublicID    string `json:"desk_public_id"`
 }
 
 func (q *Queries) CreateServiceLogs(ctx context.Context, arg CreateServiceLogsParams) (ServiceLog, error) {
@@ -201,11 +201,11 @@ ORDER BY created_at ASC
 `
 
 type ListServiceLogsParams struct {
-	UserPublicID    sql.NullString
-	VisitorPublicID sql.NullString
-	DeskPublicID    sql.NullString
-	StartDate       sql.NullTime
-	EndDate         sql.NullTime
+	UserPublicID    sql.NullString `json:"user_public_id"`
+	VisitorPublicID sql.NullString `json:"visitor_public_id"`
+	DeskPublicID    sql.NullString `json:"desk_public_id"`
+	StartDate       sql.NullTime   `json:"start_date"`
+	EndDate         sql.NullTime   `json:"end_date"`
 }
 
 func (q *Queries) ListServiceLogs(ctx context.Context, arg ListServiceLogsParams) ([]ServiceLog, error) {
@@ -295,11 +295,11 @@ RETURNING id, created_at, updated_at, called_at, is_active, public_id, user_publ
 `
 
 type SetServiceLogsByPublicIDParams struct {
-	PublicID        string
-	VisitorPublicID string
-	UserPublicID    string
-	DeskPublicID    string
-	IsActive        bool
+	PublicID        string `json:"public_id"`
+	VisitorPublicID string `json:"visitor_public_id"`
+	UserPublicID    string `json:"user_public_id"`
+	DeskPublicID    string `json:"desk_public_id"`
+	IsActive        bool   `json:"is_active"`
 }
 
 func (q *Queries) SetServiceLogsByPublicID(ctx context.Context, arg SetServiceLogsByPublicIDParams) (ServiceLog, error) {
@@ -333,8 +333,8 @@ RETURNING id, created_at, updated_at, called_at, is_active, public_id, user_publ
 `
 
 type SetServiceLogsIsActiveByPublicIDParams struct {
-	PublicID string
-	IsActive bool
+	PublicID string `json:"public_id"`
+	IsActive bool   `json:"is_active"`
 }
 
 func (q *Queries) SetServiceLogsIsActiveByPublicID(ctx context.Context, arg SetServiceLogsIsActiveByPublicIDParams) (ServiceLog, error) {

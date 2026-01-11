@@ -12,70 +12,80 @@ import (
 )
 
 type Desk struct {
-	ID          uuid.UUID
-	Description sql.NullString
-	IsActive    bool
-	PublicID    string
-	Name        string
+	ID          uuid.UUID      `json:"id"`
+	Description sql.NullString `json:"description"`
+	IsActive    bool           `json:"is_active"`
+	PublicID    string         `json:"public_id"`
+	Name        string         `json:"name"`
 }
 
 type Purpose struct {
-	ID              uuid.UUID
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
-	PurposeName     string
-	ParentPurposeID uuid.NullUUID
-	PublicID        string
+	ID              uuid.UUID     `json:"id"`
+	CreatedAt       time.Time     `json:"created_at"`
+	UpdatedAt       time.Time     `json:"updated_at"`
+	PurposeName     string        `json:"purpose_name"`
+	ParentPurposeID uuid.NullUUID `json:"parent_purpose_id"`
+	PublicID        string        `json:"public_id"`
 }
 
 type RefreshToken struct {
-	Token        string
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
-	ExpiresAt    time.Time
-	RevokedAt    sql.NullTime
-	PublicID     string
-	UserPublicID string
+	Token        string       `json:"token"`
+	CreatedAt    time.Time    `json:"created_at"`
+	UpdatedAt    time.Time    `json:"updated_at"`
+	ExpiresAt    time.Time    `json:"expires_at"`
+	RevokedAt    sql.NullTime `json:"revoked_at"`
+	PublicID     string       `json:"public_id"`
+	UserPublicID string       `json:"user_public_id"`
 }
 
 type ServiceLog struct {
-	ID              uuid.UUID
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
-	CalledAt        time.Time
-	IsActive        bool
-	PublicID        string
-	UserPublicID    string
-	VisitorPublicID string
-	DeskPublicID    string
+	ID              uuid.UUID `json:"id"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
+	CalledAt        time.Time `json:"called_at"`
+	IsActive        bool      `json:"is_active"`
+	PublicID        string    `json:"public_id"`
+	UserPublicID    string    `json:"user_public_id"`
+	VisitorPublicID string    `json:"visitor_public_id"`
+	DeskPublicID    string    `json:"desk_public_id"`
 }
 
 type TicketCounter struct {
-	Date             time.Time
-	LastTicketNumber int32
+	Date             time.Time `json:"date"`
+	LastTicketNumber int32     `json:"last_ticket_number"`
 }
 
 type User struct {
-	ID             uuid.UUID
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
-	Email          string
-	HashedPassword string
-	IsAdmin        bool
-	IsActive       bool
-	FullName       string
-	PublicID       string
-	DeskPublicID   sql.NullString
+	ID             uuid.UUID      `json:"id"`
+	CreatedAt      time.Time      `json:"created_at"`
+	UpdatedAt      time.Time      `json:"updated_at"`
+	Email          string         `json:"email"`
+	HashedPassword string         `json:"hashed_password"`
+	IsAdmin        bool           `json:"is_admin"`
+	IsActive       bool           `json:"is_active"`
+	FullName       string         `json:"full_name"`
+	PublicID       string         `json:"public_id"`
+	DeskPublicID   sql.NullString `json:"desk_public_id"`
 }
 
 type Visitor struct {
-	ID                uuid.UUID
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
-	WaitingSince      time.Time
-	Name              sql.NullString
-	Status            int32
-	DailyTicketNumber int32
-	PublicID          string
-	PurposePublicID   string
+	ID                uuid.UUID      `json:"id"`
+	CreatedAt         time.Time      `json:"created_at"`
+	UpdatedAt         time.Time      `json:"updated_at"`
+	WaitingSince      time.Time      `json:"waiting_since"`
+	Name              sql.NullString `json:"name"`
+	Status            int32          `json:"status"`
+	DailyTicketNumber int32          `json:"daily_ticket_number"`
+	PublicID          string         `json:"public_id"`
+	PurposePublicID   string         `json:"purpose_public_id"`
+}
+
+type VisitorResponseValue struct {
+	PublicID          string         `json:"public_id"`
+	WaitingSince      time.Time      `json:"waiting_since"`
+	Name              sql.NullString `json:"name"`
+	Status            int32          `json:"status"`
+	DailyTicketNumber int32          `json:"daily_ticket_number"`
+	PurposePublicID   string         `json:"purpose_public_id"`
+	PurposeName       string         `json:"purpose_name"`
 }

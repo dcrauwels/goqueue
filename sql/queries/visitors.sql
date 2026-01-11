@@ -84,7 +84,7 @@ WHERE (sqlc.narg('status')::int IS NULL OR status = sqlc.narg('status'))
 ORDER BY waiting_since ASC;
 
 -- name: GetQueue :many
-SEELCT * FROM visitor_response_values
+SELECT * FROM visitor_response_values
 WHERE status IN (1,2,3);
 
 -- name: GetPublicIDOfNextWaitingVisitor :one
@@ -98,11 +98,11 @@ FOR UPDATE SKIP LOCKED;
 WITH updated_visitor AS (
     UPDATE visitors
     SET status = 2, updated_at = NOW()
-    WHERE public_id = $1
+    WHERE visitors.public_id = $1
     RETURNING *
 )
 SELECT uv.public_id, uv.waiting_since, uv.name, uv.status, uv.daily_ticket_number, uv.purpose_public_id, p.purpose_name
-FROM updated_visitor
+FROM updated_visitor uv
 INNER JOIN purposes p
 ON p.public_id = uv.purpose_public_id;
 
@@ -120,7 +120,7 @@ WITH next_visitor_public_id AS (
     RETURNING *
 )
 SELECT uv.public_id, uv.waiting_since, uv.name, uv.status, uv.daily_ticket_number, uv.purpose_public_id, p.purpose_name
-FROM updated_visitor
+FROM updated_visitor uv
 INNER JOIN purposes p
 ON p.public_id = uv.purpose_public_id;
 
@@ -130,7 +130,7 @@ SET STATUS = 6, updated_at = NOW() -- currently autocompleted is status #6. This
 WHERE status IN (1, 2, 3) 
 RETURNING *;
 
--- name SetAllIncompleteVisitorsStatus :many
+-- name: SetAllIncompleteVisitorsStatus :many
 UPDATE visitors
 SET STATUS = $1, updated_at = NOW() -- not sure if I'll need this query honestly
 WHERE status IN (1, 2, 3) 

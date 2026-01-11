@@ -23,9 +23,9 @@ RETURNING id, description, is_active, public_id, name
 `
 
 type CreateDesksParams struct {
-	PublicID    string
-	Name        string
-	Description sql.NullString
+	PublicID    string         `json:"public_id"`
+	Name        string         `json:"name"`
+	Description sql.NullString `json:"description"`
 }
 
 func (q *Queries) CreateDesks(ctx context.Context, arg CreateDesksParams) (Desk, error) {
@@ -169,10 +169,10 @@ RETURNING id, description, is_active, public_id, name
 `
 
 type SetDesksByPublicIDParams struct {
-	PublicID    string
-	Name        string
-	Description sql.NullString
-	IsActive    bool
+	PublicID    string         `json:"public_id"`
+	Name        string         `json:"name"`
+	Description sql.NullString `json:"description"`
+	IsActive    bool           `json:"is_active"`
 }
 
 func (q *Queries) SetDesksByPublicID(ctx context.Context, arg SetDesksByPublicIDParams) (Desk, error) {
