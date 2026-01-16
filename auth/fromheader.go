@@ -66,7 +66,7 @@ func UserFromHeader(w http.ResponseWriter, r *http.Request, cfg configReader, db
 	return authFromHeader(w, r, cfg, "user", db.GetUserByPublicID)
 }
 
-func VisitorFromHeader(w http.ResponseWriter, r *http.Request, cfg configReader, db databaseQueryer) (database.Visitor, error) {
+func VisitorFromHeader(w http.ResponseWriter, r *http.Request, cfg configReader, db databaseQueryer) (database.VisitorResponseValue, error) {
 	return authFromHeader(w, r, cfg, "visitor", db.GetVisitorsByPublicID)
 }
 

@@ -64,12 +64,12 @@ func UserFromContext(w http.ResponseWriter, r *http.Request, db databaseQueryer)
 	return user, err
 }
 
-func VisitorFromContext(w http.ResponseWriter, r *http.Request, db databaseQueryer) (database.Visitor, error) {
+func VisitorFromContext(w http.ResponseWriter, r *http.Request, db databaseQueryer) (database.VisitorResponseValue, error) {
 	/*
 		Implements auth.authFromContext for visitor authentication from cookie.
 		NOTE THE BACKEND FOR THIS COOKIE TYPE IS NYI
 	*/
-	var visitor database.Visitor
+	var visitor database.VisitorResponseValue
 	visitor, err := authFromContext(w, r, VisitorIDContextKey, "visitor", db.GetVisitorsByPublicID)
 	if err != nil {
 		return visitor, err
