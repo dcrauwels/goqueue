@@ -279,6 +279,9 @@ func (cfg *ApiConfig) HandlerCallNextVisitor(w http.ResponseWriter, r *http.Requ
 	} else if !accessingUser.IsActive {
 		jsonutils.WriteError(w, http.StatusForbidden, auth.ErrUserInactive, "accessing user account is inactive")
 		return
+	} else if !accessingUser.DeskPublicID.Valid {
+		jsonutils.WriteError(w, http.StatusForbidden, auth.ErrUserWithoutDesk, "accessing user is not at a desk")
+		return
 	}
 
 	// 2. check for active visitors on accessing user
@@ -324,11 +327,11 @@ func (cfg *ApiConfig) HandlerCallNextVisitor(w http.ResponseWriter, r *http.Requ
 		}
 	}
 
-	// 3. get next waiting visitor
-	calledVisitor, err := cfg.DB.GetNextWaitingVisitor(r.Context())
+	// 3. get next waiting visitor. Note that this updates  the visitor in the SQL query already
+	calledVisitor, err := cfg.DB.CallNextWaitingVisitor(r.Context())
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			jsonutils.WriteJSON(w, http.StatusNoContent, response)
+			jsonutils.WriteJSON(w, http.StatusOK, nil)
 			return
 		} else {
 			jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (CallNextVisitor in HandlerCallNextVisitor)")
@@ -336,21 +339,19 @@ func (cfg *ApiConfig) HandlerCallNextVisitor(w http.ResponseWriter, r *http.Requ
 		}
 	}
 
-	// 4. update waiting visitor status and insert servicelog
-	// 4.1 update visitor status
-	newVisitorParams := database.SetVisitorStatusByPublicIDParams{
-		PublicID: calledVisitor.PublicID,
-		Status:   int32(StatusCalled),
+	// 4. insert servicelog
+	slQueryParams := database.CreateServiceLogsParams{
+		PublicID:        cfg.PublicIDGenerator(),
+		VisitorPublicID: calledVisitor.PublicID,
+		UserPublicID:    accessingUser.PublicID,
+		DeskPublicID:    accessingUser.DeskPublicID.String,
 	}
-	updatedVisitor, err := cfg.DB.SetVisitorStatusByPublicID(r.Context(), newVisitorParams)
-	if err != nil { // no need to check for sql.ErrNoRows -- that would have already been thrown by GetNextWaitingVisitor()
-		jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (SetVisitorStatusByPublicID in HandlerCallNextVisitor)")
+	_, err = cfg.DB.CreateServiceLogs(r.Context(), slQueryParams)
+	if err != nil {
+		jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (CreateServiceLogs in HandlerCallNextVisitor)")
 		return
 	}
 
-	// 4.2 insert servicelog
-
 	// 3. write response
-	response.Populate(updatedVisitor)
-	jsonutils.WriteJSON(w, http.StatusOK, response)
+	jsonutils.WriteJSON(w, http.StatusOK, calledVisitor)
 }

@@ -14,6 +14,7 @@ var ErrWrongUserType = errors.New("usertype supplied in JWT is not valid")
 var ErrVisitorMismatch = errors.New("accessing visitor is not visitor identified in endpoint URI")
 var ErrUserInactive = errors.New("user account is inactive")
 var ErrUserNotAdmin = errors.New("user account is not an admin")
+var ErrUserWithoutDesk = errors.New("user is not associated wit ha desk")
 
 type configReader interface {
 	GetSecret() string
@@ -21,7 +22,7 @@ type configReader interface {
 
 type databaseQueryer interface {
 	GetUserByPublicID(context.Context, string) (database.User, error)
-	GetVisitorsByPublicID(context.Context, string) (database.GetVisitorsByPublicIDRow, error)
+	GetVisitorsByPublicID(context.Context, string) (database.VisitorResponseValue, error)
 	CreateRefreshToken(context.Context, database.CreateRefreshTokenParams) (database.RefreshToken, error)
 	RevokeRefreshTokenByToken(context.Context, string) (database.RefreshToken, error)
 }
