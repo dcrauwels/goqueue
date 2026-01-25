@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/dcrauwels/goqueue/auth"
 	"github.com/dcrauwels/goqueue/internal/database"
@@ -349,7 +350,7 @@ func (cfg *ApiConfig) HandlerCallNextVisitor(w http.ResponseWriter, r *http.Requ
 		UserPublicID:    accessingUser.PublicID,
 		DeskPublicID:    accessingUser.DeskPublicID.String,
 	}
-	_, err = cfg.DB.CreateServiceLogs(r.Context(), slQueryParams)
+	createdServiceLog, err := cfg.DB.CreateServiceLogs(r.Context(), slQueryParams)
 	if err != nil {
 		jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (CreateServiceLogs in HandlerCallNextVisitor)")
 		return
@@ -359,5 +360,44 @@ func (cfg *ApiConfig) HandlerCallNextVisitor(w http.ResponseWriter, r *http.Requ
 	cfg.Broker.Notifier <- []byte("refresh_queue")
 
 	// 6. write response
-	jsonutils.WriteJSON(w, http.StatusOK, calledVisitor)
+	accessingUserDesk, err := cfg.DB.GetDesksByPublicID(r.Context(), accessingUser.DeskPublicID.String)
+	if err != nil {
+		jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (GetDesksByPublicID in HandlerCallNextVisitor)")
+	}
+
+	type CallNextResponse struct {
+		ServicelogPublicID string    `json:"servicelog_public_id"`
+		CalledAt           time.Time `json:"called_at"`
+		IsActive           bool      `json:"is_active"`
+		Visitor            struct {
+			VisitorPublicID   string         `json:"visitor_public_id"`
+			VisitorName       sql.NullString `json:"visitor_name"`
+			DailyTicketNumber int32          `json:"daily_ticket_number"`
+			Status            int32          `json:"status"`
+			WaitingSince      time.Time      `json:"waiting_since"`
+			PurposePublicID   string         `json:"purpose_public_id"`
+			PurposeName       string         `json:"purpose_name"`
+		}
+		Desk struct {
+			DeskPublicID string `json:"desk_public_id"`
+			DeskName     string `json:"desk_name"`
+		}
+	}
+
+	response := CallNextResponse{
+		ServicelogPublicID: createdServiceLog.PublicID,
+		CalledAt:           createdServiceLog.CalledAt,
+		IsActive:           createdServiceLog.IsActive,
+	}
+	response.Visitor.VisitorPublicID = calledVisitor.PublicID
+	response.Visitor.VisitorName = calledVisitor.Name
+	response.Visitor.DailyTicketNumber = calledVisitor.DailyTicketNumber
+	response.Visitor.Status = calledVisitor.Status
+	response.Visitor.WaitingSince = calledVisitor.WaitingSince
+	response.Visitor.PurposePublicID = calledVisitor.PurposePublicID
+	response.Visitor.PurposeName = calledVisitor.PurposeName
+	response.Desk.DeskPublicID = accessingUserDesk.PublicID
+	response.Desk.DeskName = accessingUserDesk.Name
+
+	jsonutils.WriteJSON(w, http.StatusOK, response)
 }

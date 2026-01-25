@@ -125,8 +125,8 @@ func main() {
 	mux.Handle("POST /api/servicelogs", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerPostServicelogs)))                          // NYI
 	mux.Handle("PUT /api/servicelogs/{servicelog_public_id}", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerPutServicelogsByID))) // NYI
 	mux.Handle("GET /api/servicelogs", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerGetServicelogs)))                            // NYI
-	mux.HandleFunc("GET /api/servicelogs/{servicelog_public_id}", apiCfg.HandlerGetServicelogsByPublicID)
-	mux.Handle("GET /api/me/active-service", apiCfg.AuthUserMiddleware(http.HandlerFunc(api.HandlerGetMeActiveService)))
+	mux.HandleFunc("GET /api/servicelogs/{servicelog_public_id}", apiCfg.HandlerGetServicelogsByPublicID)                                    // NYI
+	mux.Handle("GET /api/me/active-service", apiCfg.AuthUserMiddleware(http.HandlerFunc(api.HandlerGetMeActiveService)))                     // NYI
 
 	/// register handlers from the admin package
 	//handler_admin.go
