@@ -26,11 +26,11 @@ type VisitorsPutRequestParameters struct {
 }
 
 type CallVisitorResponse struct {
-	ServicelogPublicID string    `json:"servicelog_public_id"`
-	CalledAt           time.Time `json:"called_at"`
-	IsActive           bool      `json:"is_active"`
-	Visitor            struct {
-		VisitorPublicID   string         `json:"visitor_public_id"`
+	PublicID        string    `json:"public_id"`
+	CalledAt        time.Time `json:"called_at"`
+	IsActive        bool      `json:"is_active"`
+	VisitorResponse struct {
+		PublicID          string         `json:"public_id"`
 		VisitorName       sql.NullString `json:"visitor_name"`
 		DailyTicketNumber int32          `json:"daily_ticket_number"`
 		Status            int32          `json:"status"`
@@ -39,8 +39,8 @@ type CallVisitorResponse struct {
 		PurposeName       string         `json:"purpose_name"`
 	}
 	Desk struct {
-		DeskPublicID string `json:"desk_public_id"`
-		DeskName     string `json:"desk_name"`
+		PublicID string `json:"public_id"`
+		DeskName string `json:"desk_name"`
 	}
 }
 
@@ -218,19 +218,19 @@ func (cfg *ApiConfig) HandlerCallVisitorsByPublicID(w http.ResponseWriter, r *ht
 		return
 	}
 	response := CallVisitorResponse{
-		ServicelogPublicID: createdServiceLog.PublicID,
-		CalledAt:           createdServiceLog.CalledAt,
-		IsActive:           createdServiceLog.IsActive,
+		PublicID: createdServiceLog.PublicID,
+		CalledAt: createdServiceLog.CalledAt,
+		IsActive: createdServiceLog.IsActive,
 	}
-	response.Visitor.VisitorPublicID = calledVisitor.PublicID
-	response.Visitor.VisitorName = calledVisitor.Name
-	response.Visitor.DailyTicketNumber = calledVisitor.DailyTicketNumber
-	response.Visitor.Status = calledVisitor.Status
-	response.Visitor.WaitingSince = calledVisitor.WaitingSince
-	response.Visitor.PurposePublicID = calledVisitor.PurposePublicID
-	response.Visitor.PurposeName = calledVisitor.PurposeName
-	response.Desk.DeskPublicID = accessingUserDesk.PublicID
-	response.Desk.DeskPublicID = accessingUserDesk.Name
+	response.VisitorResponse.PublicID = calledVisitor.PublicID
+	response.VisitorResponse.VisitorName = calledVisitor.Name
+	response.VisitorResponse.DailyTicketNumber = calledVisitor.DailyTicketNumber
+	response.VisitorResponse.Status = calledVisitor.Status
+	response.VisitorResponse.WaitingSince = calledVisitor.WaitingSince
+	response.VisitorResponse.PurposePublicID = calledVisitor.PurposePublicID
+	response.VisitorResponse.PurposeName = calledVisitor.PurposeName
+	response.Desk.PublicID = accessingUserDesk.PublicID
+	response.Desk.PublicID = accessingUserDesk.Name
 
 	jsonutils.WriteJSON(w, http.StatusOK, response)
 }
@@ -434,18 +434,18 @@ func (cfg *ApiConfig) HandlerCallNextVisitor(w http.ResponseWriter, r *http.Requ
 	}
 
 	response := CallVisitorResponse{
-		ServicelogPublicID: createdServiceLog.PublicID,
-		CalledAt:           createdServiceLog.CalledAt,
-		IsActive:           createdServiceLog.IsActive,
+		PublicID: createdServiceLog.PublicID,
+		CalledAt: createdServiceLog.CalledAt,
+		IsActive: createdServiceLog.IsActive,
 	}
-	response.Visitor.VisitorPublicID = calledVisitor.PublicID
-	response.Visitor.VisitorName = calledVisitor.Name
-	response.Visitor.DailyTicketNumber = calledVisitor.DailyTicketNumber
-	response.Visitor.Status = calledVisitor.Status
-	response.Visitor.WaitingSince = calledVisitor.WaitingSince
-	response.Visitor.PurposePublicID = calledVisitor.PurposePublicID
-	response.Visitor.PurposeName = calledVisitor.PurposeName
-	response.Desk.DeskPublicID = accessingUserDesk.PublicID
+	response.VisitorResponse.PublicID = calledVisitor.PublicID
+	response.VisitorResponse.VisitorName = calledVisitor.Name
+	response.VisitorResponse.DailyTicketNumber = calledVisitor.DailyTicketNumber
+	response.VisitorResponse.Status = calledVisitor.Status
+	response.VisitorResponse.WaitingSince = calledVisitor.WaitingSince
+	response.VisitorResponse.PurposePublicID = calledVisitor.PurposePublicID
+	response.VisitorResponse.PurposeName = calledVisitor.PurposeName
+	response.Desk.PublicID = accessingUserDesk.PublicID
 	response.Desk.DeskName = accessingUserDesk.Name
 
 	jsonutils.WriteJSON(w, http.StatusOK, response)
