@@ -25,25 +25,24 @@ type VisitorsPutRequestParameters struct {
 	Status          int32  `json:"status"`
 }
 
-/*type VisitorsResponseParameters struct {
-	PublicID          string         `json:"public_id"`
-	WaitingSince      time.Time      `json:"waiting_since"`
-	Name              sql.NullString `json:"name"`
-	PurposePublicID   string         `json:"purpose_public_id"`
-	Status            int32          `json:"status"`
-	DailyTicketNumber int32          `json:"daily_ticket_number"`
-	PurposeName       string         `json:"purpose_name"`
+type CallVisitorResponse struct {
+	ServicelogPublicID string    `json:"servicelog_public_id"`
+	CalledAt           time.Time `json:"called_at"`
+	IsActive           bool      `json:"is_active"`
+	Visitor            struct {
+		VisitorPublicID   string         `json:"visitor_public_id"`
+		VisitorName       sql.NullString `json:"visitor_name"`
+		DailyTicketNumber int32          `json:"daily_ticket_number"`
+		Status            int32          `json:"status"`
+		WaitingSince      time.Time      `json:"waiting_since"`
+		PurposePublicID   string         `json:"purpose_public_id"`
+		PurposeName       string         `json:"purpose_name"`
+	}
+	Desk struct {
+		DeskPublicID string `json:"desk_public_id"`
+		DeskName     string `json:"desk_name"`
+	}
 }
-
-func (vrp *VisitorsResponseParameters) Populate(v database.CreateVisitorRow) {
-	vrp.PublicID = v.PublicID
-	vrp.WaitingSince = v.WaitingSince
-	vrp.Name = v.Name
-	vrp.PurposePublicID = v.PurposePublicID
-	vrp.PurposeName = v.PurposeName
-	vrp.Status = v.Status
-	vrp.DailyTicketNumber = v.DailyTicketNumber
-}*/
 
 type VisitorStatus int32
 
@@ -120,7 +119,7 @@ func (cfg *ApiConfig) HandlerPutVisitorsByPublicID(w http.ResponseWriter, r *htt
 	*/
 
 	// 1. get target visitor from URI
-	pvid, err := strutils.GetPublicIDFromPathValue("visitor_public_id", cfg.PublicIDLength, r)
+	vpid, err := strutils.GetPublicIDFromPathValue("visitor_public_id", cfg.PublicIDLength, r)
 	if err != nil {
 		jsonutils.WriteError(w, http.StatusBadRequest, err, "incorrect path value length")
 		return
@@ -147,7 +146,7 @@ func (cfg *ApiConfig) HandlerPutVisitorsByPublicID(w http.ResponseWriter, r *htt
 
 	// 4. run query
 	queryParams := database.SetVisitorByPublicIDParams{
-		PublicID:        pvid,
+		PublicID:        vpid,
 		Name:            strutils.InitNullString(request.Name),
 		PurposePublicID: request.PurposePublicID,
 		Status:          request.Status,
@@ -163,8 +162,77 @@ func (cfg *ApiConfig) HandlerPutVisitorsByPublicID(w http.ResponseWriter, r *htt
 		}
 	}
 
-	// 6. write response
+	// 5. write response
 	jsonutils.WriteJSON(w, http.StatusOK, updatedVisitor)
+}
+
+func (cfg *ApiConfig) HandlerCallVisitorsByPublicID(w http.ResponseWriter, r *http.Request) { // PUT /api/visitors/{visitor_public_id}/call
+	// 1. get user auth from request context
+	accessingUser, err := auth.UserFromContext(w, r, cfg.DB) // I don't need information about the user itself, just whether a user ID is present in the request context.
+	if err != nil {
+		jsonutils.WriteError(w, http.StatusUnauthorized, err, "user authentication required to access PUT /api/visitors")
+		return
+	} else if !accessingUser.IsActive {
+		jsonutils.WriteError(w, http.StatusForbidden, auth.ErrUserInactive, "accessing user account is inactive")
+		return
+	} else if !accessingUser.DeskPublicID.Valid {
+		jsonutils.WriteError(w, http.StatusForbidden, auth.ErrUserWithoutDesk, "accessing user is not at a desk")
+		return
+	}
+
+	// 2. get vpid from path
+	vpid, err := strutils.GetPublicIDFromPathValue("visitor_public_id", cfg.PublicIDLength, r)
+	if err != nil {
+		jsonutils.WriteError(w, http.StatusBadRequest, err, "incorrect path value length")
+		return
+	}
+
+	// 3. send query
+	calledVisitor, err := cfg.DB.CallVisitorByPublicID(r.Context(), vpid)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			jsonutils.WriteError(w, http.StatusNotFound, err, "visitor at path value not found")
+		} else {
+			jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (CallVisitorByPublicID in HandlerCallVisitorsByPublicID)")
+		}
+		return
+	}
+
+	// 4. write servicelog
+	serviceLogParams := database.CreateServiceLogsParams{
+		PublicID:        cfg.PublicIDGenerator(),
+		VisitorPublicID: vpid,
+		UserPublicID:    accessingUser.PublicID,
+		DeskPublicID:    accessingUser.DeskPublicID.String,
+	}
+	createdServiceLog, err := cfg.DB.CreateServiceLogs(r.Context(), serviceLogParams)
+	if err != nil {
+		jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (CreateServiceLogs in HandlerCallVisitorsByPublicID)")
+		return
+	}
+
+	// 5. write response
+	accessingUserDesk, err := cfg.DB.GetDesksByPublicID(r.Context(), accessingUser.DeskPublicID.String)
+	if err != nil {
+		jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (GetDesksByPublicID in HandlerCallVisitorsByPublicID)")
+		return
+	}
+	response := CallVisitorResponse{
+		ServicelogPublicID: createdServiceLog.PublicID,
+		CalledAt:           createdServiceLog.CalledAt,
+		IsActive:           createdServiceLog.IsActive,
+	}
+	response.Visitor.VisitorPublicID = calledVisitor.PublicID
+	response.Visitor.VisitorName = calledVisitor.Name
+	response.Visitor.DailyTicketNumber = calledVisitor.DailyTicketNumber
+	response.Visitor.Status = calledVisitor.Status
+	response.Visitor.WaitingSince = calledVisitor.WaitingSince
+	response.Visitor.PurposePublicID = calledVisitor.PurposePublicID
+	response.Visitor.PurposeName = calledVisitor.PurposeName
+	response.Desk.DeskPublicID = accessingUserDesk.PublicID
+	response.Desk.DeskPublicID = accessingUserDesk.Name
+
+	jsonutils.WriteJSON(w, http.StatusOK, response)
 }
 
 func (cfg *ApiConfig) HandlerGetVisitors(w http.ResponseWriter, r *http.Request) { // GET /api/visitors
@@ -365,26 +433,7 @@ func (cfg *ApiConfig) HandlerCallNextVisitor(w http.ResponseWriter, r *http.Requ
 		jsonutils.WriteError(w, http.StatusInternalServerError, err, "error querying database (GetDesksByPublicID in HandlerCallNextVisitor)")
 	}
 
-	type CallNextResponse struct {
-		ServicelogPublicID string    `json:"servicelog_public_id"`
-		CalledAt           time.Time `json:"called_at"`
-		IsActive           bool      `json:"is_active"`
-		Visitor            struct {
-			VisitorPublicID   string         `json:"visitor_public_id"`
-			VisitorName       sql.NullString `json:"visitor_name"`
-			DailyTicketNumber int32          `json:"daily_ticket_number"`
-			Status            int32          `json:"status"`
-			WaitingSince      time.Time      `json:"waiting_since"`
-			PurposePublicID   string         `json:"purpose_public_id"`
-			PurposeName       string         `json:"purpose_name"`
-		}
-		Desk struct {
-			DeskPublicID string `json:"desk_public_id"`
-			DeskName     string `json:"desk_name"`
-		}
-	}
-
-	response := CallNextResponse{
+	response := CallVisitorResponse{
 		ServicelogPublicID: createdServiceLog.PublicID,
 		CalledAt:           createdServiceLog.CalledAt,
 		IsActive:           createdServiceLog.IsActive,

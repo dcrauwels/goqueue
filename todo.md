@@ -47,8 +47,8 @@
 - [x] make a single-server events setup (G)
 - [x] build SSE broker structure
 - [x] implement handler at /api/visitors/events
-- [ ] user calls visitor by sending POST /api/visitors/call-next
-- [ ] the return value should be a servicelog with the visitor information inside of it > NOT DONE YET
+- [x] user calls visitor by sending POST /api/visitors/call-next
+- [x] the return value should be a servicelog with the visitor information inside of it
 - [ ] user should also be able to send PUT /api/visitors/{visitor_public_id}/call and change their status that way. return value should be same as above: a servicelog
 - [ ] write associated handler
 - [ ] visitor sees what desk they go to from GET /api/visitors/{visitor_public_id} and GET /api/visitors/screen

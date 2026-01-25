@@ -97,10 +97,11 @@ func main() {
 	mux.Handle("POST /api/revoke", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerRevokeAllRefreshTokens)))              // ok
 	mux.Handle("POST /api/revoke/{user_public_id}", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerRevokeRefreshToken))) // ok
 	//handler_visitors.go
-	mux.HandleFunc("POST /api/visitors", apiCfg.HandlerPostVisitors)                                                                      // ok
-	mux.Handle("PUT /api/visitors/{visitor_public_id}", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerPutVisitorsByPublicID))) // ok
-	mux.Handle("GET /api/visitors", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerGetVisitors)))                               // ok
-	mux.HandleFunc("GET /api/visitors/{visitor_public_id}", apiCfg.HandlerGetVisitorsByPublicID)                                          // ok
+	mux.HandleFunc("POST /api/visitors", apiCfg.HandlerPostVisitors)                                                                       // ok
+	mux.Handle("PUT /api/visitors/{visitor_public_id}", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerPutVisitorsByPublicID)))  // ok
+	mux.Handle("PUT /api/visitors/{visitor_public_id}", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerCallVisitorsByPublicID))) // ok
+	mux.Handle("GET /api/visitors", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerGetVisitors)))                                // ok
+	mux.HandleFunc("GET /api/visitors/{visitor_public_id}", apiCfg.HandlerGetVisitorsByPublicID)                                           // ok
 	mux.Handle("GET /api/visitors/events", apiCfg.AuthUserMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		upid, _ := r.Context().Value(auth.UserPublicIDContextKey).(string)
 		if upid == "" {
