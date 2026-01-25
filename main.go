@@ -10,6 +10,7 @@ import (
 
 	"github.com/dcrauwels/goqueue/admin"
 	"github.com/dcrauwels/goqueue/api"
+	"github.com/dcrauwels/goqueue/auth"
 	"github.com/dcrauwels/goqueue/internal/database"
 	"github.com/dcrauwels/goqueue/strutils"
 	"github.com/jaevor/go-nanoid"
@@ -20,7 +21,7 @@ import (
 func main() {
 	// load .env into env variables
 	godotenv.Load()
-	//opendb
+	// open db
 	dbURL := os.Getenv("DB_URL")
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
@@ -57,8 +58,13 @@ func main() {
 		panic(err)
 	}
 
+	// init broker
+	broker := api.NewBroker()
+	go broker.Run()
+
 	apiCfg := api.ApiConfig{
 		DB:                   dbQueries,
+		Broker:               broker,
 		Secret:               os.Getenv("SECRET"),
 		Env:                  os.Getenv("ENV"),
 		AccessTokenDuration:  accessTokenDuration,
@@ -94,9 +100,17 @@ func main() {
 	mux.HandleFunc("POST /api/visitors", apiCfg.HandlerPostVisitors)                                                                      // ok
 	mux.Handle("PUT /api/visitors/{visitor_public_id}", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerPutVisitorsByPublicID))) // ok
 	mux.Handle("GET /api/visitors", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerGetVisitors)))                               // ok
-	mux.HandleFunc("GET /api/visitors/{visitor_public_id}", apiCfg.HandlerGetVisitorsByPublicID)                                          //ok
-	mux.Handle("GET /api/visitors/queue", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerGetQueue)))                            // ok
-	mux.Handle("POST /api/visitors/call-next", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerCallNextVisitor)))                // ok
+	mux.HandleFunc("GET /api/visitors/{visitor_public_id}", apiCfg.HandlerGetVisitorsByPublicID)                                          // ok
+	mux.Handle("GET /api/visitors/events", apiCfg.AuthUserMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		upid, _ := r.Context().Value(auth.UserPublicIDContextKey).(string)
+		if upid == "" {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+		apiCfg.Broker.ServeHTTP(w, r)
+	}))) // ok > had to write a small wrapper to keep unauthorized access out of the broker
+	mux.Handle("GET /api/visitors/queue", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerGetQueue)))             // ok
+	mux.Handle("POST /api/visitors/call-next", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerCallNextVisitor))) // ok
 	//handler_desks.go
 	mux.Handle("POST /api/desks", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerPostDesks)))                          // ok
 	mux.Handle("PUT /api/desks/{desk_public_id}", apiCfg.AuthUserMiddleware(http.HandlerFunc(apiCfg.HandlerPutDesksByPublicID))) // ok

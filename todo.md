@@ -42,10 +42,13 @@
 - [x] write handler for PUT /api/me/desks
 - [x] write handler for PUT /api/users/{user_public_id}/desks
 - [x] write handler for GET /api/me
-- [ ] visitor enters building and sends POST request to /api/visitors
+- [x] visitor enters building and sends POST request to /api/visitors
 - [ ] user sees visitor show up through periodic GET /api/visitors/queue (or maybe there is a way to trigger this? i.e. if /api/visitors takes a POST make all logged in users send a GET to the queue endpoint)
+- [ ] make a single-server events setup (G)
+- [ ] build SSE broker structure
+- [ ] implement handler at /api/visitors/events
 - [ ] user calls visitor by sending POST /api/visitors/call-next
-- [ ] the return value should be a servicelog with the visitor information inside of it 
+- [ ] the return value should be a servicelog with the visitor information inside of it > NOT DONE YET
 - [ ] user should also be able to send PUT /api/visitors/{visitor_public_id}/call and change their status that way. return value should be same as above: a servicelog
 - [ ] write associated handler
 - [ ] visitor sees what desk they go to from GET /api/visitors/{visitor_public_id} and GET /api/visitors/screen

@@ -104,7 +104,10 @@ func (cfg *ApiConfig) HandlerPostVisitors(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// 6. return response 201
+	// 6. send message to broker
+	cfg.Broker.Notifier <- []byte("refresh_queue")
+
+	// 7. return response 201
 	jsonutils.WriteJSON(w, http.StatusCreated, createdVisitor)
 }
 
@@ -352,6 +355,9 @@ func (cfg *ApiConfig) HandlerCallNextVisitor(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// 3. write response
+	// 5. notify broker
+	cfg.Broker.Notifier <- []byte("refresh_queue")
+
+	// 6. write response
 	jsonutils.WriteJSON(w, http.StatusOK, calledVisitor)
 }

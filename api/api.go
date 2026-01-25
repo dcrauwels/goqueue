@@ -15,6 +15,7 @@ import (
 
 type ApiConfig struct {
 	DB                   *database.Queries
+	Broker               *Broker
 	Secret               string
 	Env                  string
 	AccessTokenDuration  int
@@ -137,7 +138,7 @@ func (cfg *ApiConfig) AuthUserMiddleware(next http.Handler) http.Handler {
 			// 2.2.6 retry same request (redirect to original path. note that this time we will have proper cookies so 2.2 should trigger)
 			upid := rotatedRefreshToken.UserPublicID
 			ctx := r.Context()
-			ctx = context.WithValue(ctx, auth.UserIDContextKey, upid)
+			ctx = context.WithValue(ctx, auth.UserPublicIDContextKey, upid)
 			next.ServeHTTP(w, r.WithContext(ctx))
 			return
 
@@ -189,7 +190,7 @@ func (cfg *ApiConfig) AuthUserMiddleware(next http.Handler) http.Handler {
 		// 3. modify context to take ID and pass into next handler
 		upid = userPublicID
 		ctx := r.Context()
-		ctx = context.WithValue(ctx, auth.UserIDContextKey, upid)
+		ctx = context.WithValue(ctx, auth.UserPublicIDContextKey, upid)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
