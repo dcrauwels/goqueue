@@ -48,9 +48,10 @@
 - [x] build SSE broker structure
 - [x] implement handler at /api/visitors/events
 - [x] user calls visitor by sending POST /api/visitors/call-next
+- [ ] user can call visitors subsets by purpose?
 - [x] the return value should be a servicelog with the visitor information inside of it
-- [ ] user should also be able to send PUT /api/visitors/{visitor_public_id}/call and change their status that way. return value should be same as above: a servicelog
-- [ ] write associated handler
+- [x] user should also be able to send PUT /api/visitors/{visitor_public_id}/call and change their status that way. return value should be same as above: a servicelog
+- [x] write associated handler
 - [ ] visitor sees what desk they go to from GET /api/visitors/{visitor_public_id} and GET /api/visitors/screen
 - [ ] the visitor should have been sent to a page that periodically sends GET /api/visitors/{their_id} as a result of them sending a POST request earlier. Technically this is a frontend question.
 - [ ] user sees the visitor called to or already being serviced at their desk through GET /api/me/active-service. The return value should be the same as above: a servicelog with the visitor information inside of it. this means the desk information should also be inside that struct
